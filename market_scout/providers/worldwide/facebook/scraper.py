@@ -83,7 +83,7 @@ def parse_card(txt: list, aria: str = "") -> dict:
 def load_cookies(fp: Path) -> list:
     if not fp.exists():
         return []
-    raw = json.loads(fp.read_text())
+    raw = json.loads(fp.read_text(encoding="utf-8"))
     out = []
     for c in raw:
         pw = {
@@ -700,7 +700,8 @@ async def run_scrape(cfg: FbScraperConfig) -> list[FbListing]:
                         for c in cks
                     ],
                     indent=2,
-                )
+                ),
+                encoding="utf-8",
             )
         except Exception:
             pass

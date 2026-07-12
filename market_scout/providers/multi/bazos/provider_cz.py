@@ -1,6 +1,6 @@
 from market_scout.models import Listing
 from market_scout.providers.base import SearchRequest
-from market_scout.providers.cz.bazos.scraper import scrape
+from market_scout.providers.multi.bazos.scraper import scrape
 
 
 class BazosCzProvider:

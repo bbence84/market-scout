@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import io
+import time
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -11,7 +12,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 from rich import box
+from rich.prompt import Prompt, Confirm
 
+from market_scout import config as cfg_module
 from market_scout.providers import PROVIDERS, resolve_providers
 from market_scout.providers.base import SearchRequest
 from market_scout.providers.worldwide.facebook.location_db import (
@@ -20,6 +23,7 @@ from market_scout.providers.worldwide.facebook.location_db import (
     resolve_locations,
 )
 from market_scout.output import print_table, print_json
+from market_scout.save import save as save_results
 
 app = typer.Typer(
     name="market-scout",
@@ -42,6 +46,93 @@ class OutputFormat(str, Enum):
     json = "json"
 
 
+def _load_cfg() -> dict:
+    """Load config, creating the file if it doesn't exist."""
+    cfg_module.init_config_file()
+    return cfg_module.load()
+
+
+# ---------------------------------------------------------------------------
+# Interactive approval helpers
+# ---------------------------------------------------------------------------
+
+def _approve_translation(original: str, translated: str, lang: str) -> str:
+    """Show the translation, let the user approve or override it."""
+    out.print(f"\n[bold]Query translation[/bold] → {lang}")
+    out.print(f"  Original : [dim]{original}[/dim]")
+    out.print(f"  Suggested: [cyan]{translated}[/cyan]")
+    choice = Prompt.ask(
+        "  Use this translation? [Y]es / [n]o (keep original) / or type your own",
+        default="y",
+        console=out,
+    )
+    c = choice.strip()
+    if c.lower() in ("y", "yes", ""):
+        return translated
+    if c.lower() in ("n", "no"):
+        return original
+    return c  # user typed their own
+
+
+def _approve_suggestions(original: str, suggestions: list[str]) -> list[str]:
+    """Show alternative query suggestions, let the user pick/override."""
+    out.print(f"\n[bold]Alternative search terms[/bold] for [cyan]{original!r}[/cyan]:")
+    for i, s in enumerate(suggestions, 1):
+        marker = "[dim](original)[/dim]" if s == original else ""
+        out.print(f"  {i}. {s}  {marker}")
+
+    out.print(
+        "\n  [dim]Options:[/dim]\n"
+        "  [bold]all[/bold]              — use all suggestions as-is\n"
+        "  [bold]none[/bold]             — use only the original query\n"
+        "  [bold]1,3,5[/bold]            — keep only selected numbers\n"
+        "  [bold]1,3,my own term[/bold]  — keep numbers + add your own\n"
+        "  [bold]override: a,b,c[/bold]  — replace everything with your own list"
+    )
+    choice = Prompt.ask("  Selection", default="all", console=out)
+    c = choice.strip()
+
+    # Override mode: replace entire list with user-supplied terms
+    if c.lower().startswith("override:") or c.lower().startswith("override "):
+        sep = ":" if ":" in c else " "
+        raw = c.split(sep, 1)[1].strip()
+        overrides = [t.strip() for t in raw.split(",") if t.strip()]
+        return overrides if overrides else [original]
+
+    cl = c.lower()
+    if cl in ("all", ""):
+        return suggestions
+    if cl == "none":
+        return [original]
+
+    # Parse number selections and optional extra terms
+    kept = []
+    extras = []
+    for part in c.split(","):
+        part = part.strip()
+        try:
+            idx = int(part) - 1
+            if 0 <= idx < len(suggestions):
+                kept.append(suggestions[idx])
+        except ValueError:
+            if part:
+                extras.append(part)
+
+    if kept or extras:
+        result = []
+        if original not in kept:
+            result.append(original)
+        result.extend(kept)
+        result.extend(extras)
+        return result if result else [original]
+
+    return [original]
+
+
+# ---------------------------------------------------------------------------
+# search command
+# ---------------------------------------------------------------------------
+
 @app.command(
     epilog=(
         "Examples:\n\n"
@@ -50,22 +141,18 @@ class OutputFormat(str, Enum):
         "  market-scout search -q 'C64' -p 'hardverapro,jofogas,vatera' --min-price 5000 --max-price 100000\n\n"
         "  # Facebook — auto-detect location from cookies\n"
         "  market-scout search -q 'Amiga 500' --cookies cookies.json\n\n"
-        "  # Facebook — single country (expands to all known cities)\n"
-        "  market-scout search -q 'Amiga 500' -l DE --cookies cookies.json\n\n"
         "  # Facebook — multiple countries\n"
         "  market-scout search -q 'C64' -l DE,AT,HU,PL --cookies cookies.json\n\n"
-        "  # Facebook — mix country code + bare city slug\n"
-        "  market-scout search -q 'retro' -l 'DE,vienna,warsaw' --cookies cookies.json\n\n"
-        "  # Facebook — override radius for all cities\n"
-        "  market-scout search -q 'Amiga' -l DE,AT --radius 200 --cookies cookies.json\n\n"
-        "  # Facebook — visible browser (first login / debugging)\n"
-        "  market-scout search -q 'C64' -l berlin --no-headless\n\n"
-        "  # Preview FB city expansion without scraping\n"
-        "  market-scout search -q 'anything' -l DE,AT,HU --dry-run\n\n"
-        "  # All Hungarian providers + Facebook together\n"
-        "  market-scout search -q 'Amiga 500' -p 'facebook,hardverapro,jofogas,vatera' -l HU --cookies cookies.json\n\n"
-        "  # Debug: see URLs being fetched\n"
-        "  market-scout search -q 'Amiga 500' -p hardverapro --debug\n"
+        "  # Country shorthand selects all matching providers\n"
+        "  market-scout search -q 'Amiga 500' -p HU\n\n"
+        "  # Translation: translate query to Hungarian for HU providers\n"
+        "  market-scout search -q 'Amiga 500' -p HU --translate-to HU\n\n"
+        "  # Alternative query suggestions\n"
+        "  market-scout search -q 'Amiga 500' --suggest-queries\n\n"
+        "  # Translate results back to English\n"
+        "  market-scout search -q 'Amiga 500' -p HU --translate-results EN\n\n"
+        "  # Dry run: see FB expansion plan\n"
+        "  market-scout search -q 'Spectrum' -l DE,AT,PL,HU --dry-run\n"
     ),
 )
 def search(
@@ -75,7 +162,7 @@ def search(
         help=(
             "Provider(s), comma-separated. "
             "Available: " + ", ".join(PROVIDERS) + ". "
-            "Defaults to all providers when omitted. "
+            "Defaults to config default or all providers. "
             "You can also pass a two-letter country code to select all providers for that country "
             "(e.g. --provider HU selects hardverapro, jofogas, vatera). "
             "Hungarian-only providers (hardverapro, jofogas, vatera) ignore --location and --radius."
@@ -88,67 +175,84 @@ def search(
             "Each token is resolved in order: "
             "(1) two-letter country code (DE, AT, HU, …) → expands to all cities for that country "
             "from the built-in DB, each with its own tuned radius; "
-            "(2) city slug (berlin, vienna, budapest) or numeric FB city ID (109233199097493) → "
+            "(2) city slug (berlin, vienna, budapest) or numeric FB city ID → "
             "passed directly to Facebook, radius from --radius or FB default ~40 km; "
             "(3) empty → Facebook auto-detects from your cookies/account location. "
             "Tokens can be mixed freely, e.g. 'DE,vienna,warsaw'. "
-            "Run 'market-scout locations' to browse all country codes and city slugs. "
-            "Run 'market-scout find-location <slug>' to get the numeric ID for a city."
+            "Run 'market-scout locations' to browse all country codes and city slugs."
         ),
     ),
     min_price: Optional[int] = typer.Option(None, "--min-price", help="Minimum price filter (all providers)"),
     max_price: Optional[int] = typer.Option(None, "--max-price", help="Maximum price filter (all providers)"),
-    max_results: int = typer.Option(
-        30, "--max-results", "-n",
-        help="Max listings to collect per city search (Facebook) or per page-run (other providers)",
+    max_results: Optional[int] = typer.Option(
+        None, "--max-results", "-n",
+        help="Max listings to collect per city search (Facebook) or per page-run (other providers). Defaults to config value (30).",
     ),
     cookies: Optional[Path] = typer.Option(
         None, "--cookies", "-c",
         help=(
-            "[Facebook only] Path to cookies JSON exported from a logged-in Chrome session "
-            "(use the EditThisCookie extension). "
-            "Without cookies, Facebook shows limited results or a login wall. "
-            "Cookies are refreshed and saved back automatically after each run."
+            "[Facebook only] Path to cookies JSON exported from a logged-in Chrome session. "
+            "Defaults to the path in config.toml if set."
         ),
     ),
-    headless: bool = typer.Option(
-        True, "--headless/--no-headless",
-        help=(
-            "[Facebook only] Run Chromium in headless mode (default). "
-            "Use --no-headless to see the browser — required for first-time login "
-            "or when debugging bot detection issues. "
-            "After logging in with --no-headless, cookies are saved and future runs can be headless."
-        ),
+    headless: Optional[bool] = typer.Option(
+        None, "--headless/--no-headless",
+        help="[Facebook only] Run Chromium headlessly (default from config). Use --no-headless for first-time login.",
     ),
     scrape_details: bool = typer.Option(
         False, "--details/--no-details",
-        help=(
-            "[Facebook only] Open each listing's detail page to collect "
-            "full description, seller name, and condition. "
-            "Significantly slower — one extra browser tab per listing."
-        ),
+        help="[Facebook only] Open each listing's detail page for full description, seller, and condition.",
     ),
-    radius_km: int = typer.Option(
-        0, "--radius",
-        help=(
-            "[Facebook only] Search radius in km around each city. "
-            "When 0 (default): country expansions use the per-city radius from the built-in DB "
-            "(e.g. berlin=150, vienna=120); bare city slugs use Facebook's default (~40 km). "
-            "When set to any positive value: overrides ALL per-city radii. "
-            "Example: --radius 200 searches a 200 km circle around every resolved city."
-        ),
+    radius_km: Optional[int] = typer.Option(
+        None, "--radius",
+        help="[Facebook only] Search radius in km (0 = use DB defaults). Defaults to config value.",
     ),
     translate_to: Optional[str] = typer.Option(
         None, "--translate-to",
-        help="[stub, not yet implemented] Target language for query and results translation.",
+        help=(
+            "Translate the search query into the specified language before searching. "
+            "Requires OpenRouter API key in config.toml. "
+            "You will be shown the translation and asked to approve or override it. "
+            "Example: --translate-to HU  (for Hungarian providers)  --translate-to DE  (for German)"
+        ),
+    ),
+    translate_results: Optional[str] = typer.Option(
+        None, "--translate-results",
+        help=(
+            "Translate result titles into the specified language. "
+            "Overrides the user_lang setting in config.toml for this run. "
+            "Example: --translate-results EN"
+        ),
+    ),
+    no_translate: bool = typer.Option(
+        False, "--no-translate",
+        help=(
+            "Skip automatic result translation even if user_lang is set in config.toml. "
+            "Useful when you want raw titles in the original language."
+        ),
+    ),
+    suggest_queries: bool = typer.Option(
+        False, "--suggest-queries",
+        help=(
+            "Ask the LLM to suggest alternative search terms (abbreviations, regional names, synonyms). "
+            "You will be shown the suggestions and asked to approve or edit them before searching. "
+            "Each approved variant is searched separately; results are merged. "
+            "Requires OpenRouter API key in config.toml."
+        ),
     ),
     output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o", help="Output format: table (default) or json"),
+    save_format: Optional[str] = typer.Option(
+        None, "--save",
+        help=(
+            "Also save results to a timestamped file in ./output/. "
+            "Formats: json, csv, txt, html. "
+            "Can be comma-separated for multiple: --save 'csv,html'. "
+            "Console output is always shown regardless of this flag."
+        ),
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run",
-        help=(
-            "[Facebook only] Show the resolved city/radius plan without running any scraping. "
-            "Use before a large multi-country search to see how many browser sessions would run."
-        ),
+        help="[Facebook only] Show the resolved city/radius plan without running any scraping.",
     ),
     debug: bool = typer.Option(
         False, "--debug",
@@ -156,14 +260,24 @@ def search(
     ),
 ):
     """Search marketplaces for items matching QUERY."""
-    if translate_to:
-        console.print(
-            "[yellow]Warning:[/yellow] --translate-to is not yet implemented. "
-            "Query and results will remain in the original language."
-        )
 
-    provider_names = resolve_providers([p.strip() for p in provider.split(",") if p.strip()])
-    location_tokens = [loc.strip() for loc in location.split(",") if loc.strip()]
+    # --- Load config and apply defaults for unset flags ---
+    cfg = _load_cfg()
+    effective_providers = provider or ",".join(cfg.get("providers", []))
+    effective_location = location or cfg.get("location", "")
+    effective_radius = radius_km if radius_km is not None else cfg.get("radius", 0)
+    effective_max = max_results if max_results is not None else cfg.get("max_results", 30)
+    effective_headless = headless if headless is not None else cfg.get("headless", True)
+    effective_cookies = cookies
+    if effective_cookies is None and cfg.get("cookies"):
+        p = Path(cfg["cookies"]).expanduser()
+        if p.exists():
+            effective_cookies = p
+    effective_output = output.value if output != OutputFormat.table else cfg.get("output", "table")
+
+    # --- Resolve providers ---
+    provider_names = resolve_providers([p.strip() for p in effective_providers.split(",") if p.strip()])
+    location_tokens = [loc.strip() for loc in effective_location.split(",") if loc.strip()]
 
     unknown = [n for n in provider_names if n not in PROVIDERS]
     if unknown:
@@ -172,7 +286,7 @@ def search(
         raise typer.Exit(code=1)
 
     if dry_run:
-        pairs = resolve_locations(location_tokens, radius_km)
+        pairs = resolve_locations(location_tokens, effective_radius)
         t = Table(title="Resolved Facebook search locations (--dry-run)", box=box.ROUNDED)
         t.add_column("City / ID", style="bold")
         t.add_column("Radius km", style="cyan")
@@ -182,48 +296,358 @@ def search(
         out.print(f"[dim]{len(pairs)} Facebook city search(es) would run. Other providers ignore --location.[/dim]")
         return
 
-    req = SearchRequest(
-        query=query,
-        locations=location_tokens,
-        min_price=min_price,
-        max_price=max_price,
-        max_results=max_results,
-        cookies_file=cookies,
-        headless=headless,
-        scrape_details=scrape_details,
-        radius_km=radius_km,
-        debug=debug,
-    )
+    # --- LLM setup ---
+    llm_cfg = cfg.get("openrouter", {})
+    llm_key = cfg_module.get_openrouter_key(cfg)
+    llm_model = llm_cfg.get("model", "anthropic/claude-haiku-4-5")
+    llm_base = llm_cfg.get("base_url", "https://openrouter.ai/api/v1")
 
-    all_listings = []
-    for pname in provider_names:
-        prov = PROVIDERS[pname]
-        if pname == "facebook":
-            pairs = resolve_locations(location_tokens, radius_km)
-            loc_summary = (
-                ", ".join(f"{s or 'auto'}+{r}km" if r else (s or "auto") for s, r in pairs)
-                if location_tokens else "auto-detect"
-            )
-            loc_note = f"| locations: {loc_summary} | {len(pairs)} city search(es)"
-        else:
-            loc_note = "[dim](location ignored — nationwide)[/dim]"
+    # Determine effective result translation target:
+    # --translate-results overrides; --no-translate suppresses; otherwise use user_lang from config
+    user_lang = cfg.get("user_lang", "en").strip()
+    if no_translate:
+        effective_translate_results = None
+    elif translate_results:
+        effective_translate_results = translate_results.strip()
+    elif user_lang and llm_key:
+        effective_translate_results = user_lang
+    else:
+        effective_translate_results = None
+
+    # Guard: abort early if an explicit LLM feature is requested but no key is configured
+    if (suggest_queries or translate_to or (translate_results and not llm_key)) and not llm_key:
         console.print(
-            f"[cyan]Searching[/cyan] [bold]{pname}[/bold] for [bold]{query!r}[/bold] "
-            + loc_note
-            + (f" | price: {min_price}–{max_price}" if min_price or max_price else "")
+            "\n[red]OpenRouter API key required[/red] for LLM features "
+            "(--suggest-queries, --translate-to, --translate-results).\n"
+            "\n"
+            "Set it with one of:\n"
+            "  [bold]market-scout config --set openrouter.api_key=sk-or-v1-your-key[/bold]\n"
+            "  [bold]export OPENROUTER_API_KEY=sk-or-v1-your-key[/bold]\n"
+            "\n"
+            "Get a key at [link=https://openrouter.ai/keys]https://openrouter.ai/keys[/link] "
+            "(free tier available).\n"
+        )
+        raise typer.Exit(code=1)
+
+    # --- Build effective query list ---
+    queries: list[str] = [query]
+
+    if suggest_queries:
+        console.print(f"[cyan]Asking LLM for alternative search terms...[/cyan]")
+        try:
+            from market_scout.llm import suggest_queries as llm_suggest
+            suggestions = llm_suggest(query, llm_model, llm_key, llm_base)
+            queries = _approve_suggestions(query, suggestions)
+            console.print(f"[green]Using {len(queries)} search term(s):[/green] {', '.join(repr(q) for q in queries)}")
+        except Exception as exc:
+            console.print(f"[red]LLM suggestion failed:[/red] {exc}")
+            console.print("[dim]Continuing with original query.[/dim]")
+
+    # --- Per-query translation ---
+    translated_queries: dict[str, str] = {}  # query → translated (or same if no translation)
+    if translate_to:
+        from market_scout.llm import translate_query as llm_translate
+        for q in queries:
+            console.print(f"[cyan]Translating {q!r} → {translate_to}...[/cyan]")
+            try:
+                translated = llm_translate(q, translate_to, llm_model, llm_key, llm_base)
+                approved = _approve_translation(q, translated, translate_to)
+                translated_queries[q] = approved
+            except Exception as exc:
+                console.print(f"[red]Translation failed:[/red] {exc}")
+                translated_queries[q] = q
+    else:
+        for q in queries:
+            translated_queries[q] = q
+
+    # --- Run searches ---
+    all_listings = []
+    seen_urls: set[str] = set()
+    provider_times: dict[str, float] = {}  # pname → total seconds
+    total_start = time.perf_counter()
+
+    for original_q in queries:
+        effective_q = translated_queries.get(original_q, original_q)
+        display_q = f"{original_q!r} [dim]({effective_q})[/dim]" if effective_q != original_q else repr(original_q)
+
+        req = SearchRequest(
+            query=effective_q,
+            locations=location_tokens,
+            min_price=min_price,
+            max_price=max_price,
+            max_results=effective_max,
+            cookies_file=effective_cookies,
+            headless=effective_headless,
+            scrape_details=scrape_details,
+            radius_km=effective_radius,
+            debug=debug,
+        )
+
+        for pname in provider_names:
+            prov = PROVIDERS[pname]
+            if pname == "facebook":
+                pairs = resolve_locations(location_tokens, effective_radius)
+                loc_summary = (
+                    ", ".join(f"{s or 'auto'}+{r}km" if r else (s or "auto") for s, r in pairs)
+                    if location_tokens else "auto-detect"
+                )
+                loc_note = f"| locations: {loc_summary} | {len(pairs)} city search(es)"
+            else:
+                loc_note = "[dim](location ignored — nationwide)[/dim]"
+            console.print(
+                f"[cyan]Searching[/cyan] [bold]{pname}[/bold] for {display_q} "
+                + loc_note
+                + (f" | price: {min_price}–{max_price}" if min_price or max_price else "")
+            )
+            try:
+                t0 = time.perf_counter()
+                results = prov.search(req)
+                elapsed = time.perf_counter() - t0
+                provider_times[pname] = provider_times.get(pname, 0.0) + elapsed
+                new_results = [r for r in results if r.url not in seen_urls]
+                for r in new_results:
+                    seen_urls.add(r.url)
+                console.print(
+                    f"[green]✓[/green] {len(new_results)} new result(s) from {pname} "
+                    f"[dim]({elapsed:.1f}s)[/dim]"
+                )
+                all_listings.extend(new_results)
+            except Exception as exc:
+                provider_times[pname] = provider_times.get(pname, 0.0)
+                console.print(f"[red]Error from {pname}:[/red] {exc}")
+
+    # --- Translate results ---
+    if effective_translate_results and all_listings:
+        from market_scout.llm import translate_listings, _BATCH_SIZE
+        source = "auto" if not translate_results and not no_translate else ("--translate-results" if translate_results else "config")
+        n = len(all_listings)
+        batches = (n + _BATCH_SIZE - 1) // _BATCH_SIZE
+        console.print(
+            f"[cyan]Translating {n} result(s) → {effective_translate_results}[/cyan] "
+            f"[dim]({batches} batch(es) of ≤{_BATCH_SIZE}) (user_lang from {source})[/dim]"
         )
         try:
-            results = prov.search(req)
-            console.print(f"[green]✓[/green] {len(results)} result(s) from {pname}")
-            all_listings.extend(results)
-        except Exception as exc:
-            console.print(f"[red]Error from {pname}:[/red] {exc}")
+            # Translate titles
+            titles = [lst.title for lst in all_listings]
+            translated_titles = translate_listings(titles, effective_translate_results, llm_model, llm_key, llm_base)
+            for lst, new_title in zip(all_listings, translated_titles):
+                if new_title and new_title != lst.title:
+                    lst.title = f"{new_title} [{lst.title}]"
 
-    if output == OutputFormat.json:
+            # Translate conditions (short strings — deduplicate to save API calls)
+            unique_conditions = list({lst.condition for lst in all_listings if lst.condition})
+            if unique_conditions:
+                translated_conditions = translate_listings(
+                    unique_conditions, effective_translate_results, llm_model, llm_key, llm_base
+                )
+                cond_map = dict(zip(unique_conditions, translated_conditions))
+                for lst in all_listings:
+                    if lst.condition and lst.condition in cond_map:
+                        lst.condition = cond_map[lst.condition]
+
+            console.print(f"[green]✓[/green] Translated to {effective_translate_results}")
+        except Exception as exc:
+            console.print(f"[red]Result translation failed:[/red] {exc}")
+
+    # --- Always print to console ---
+    if effective_output == "json":
         print_json(all_listings)
     else:
         print_table(all_listings)
 
+    # --- Timing summary ---
+    total_elapsed = time.perf_counter() - total_start
+    if provider_times:
+        parts = "  ".join(
+            f"{pname} {t:.1f}s" for pname, t in provider_times.items()
+        )
+        console.print(
+            f"[dim]⏱  {parts}  │  total {total_elapsed:.1f}s[/dim]"
+        )
+
+    # --- Save to file(s) if --save is specified ---
+    if save_format and all_listings:
+        from datetime import datetime, timezone
+        run_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        meta = {
+            "query": query,
+            "providers": provider_names,
+            "locations": location_tokens,
+            "min_price": min_price,
+            "max_price": max_price,
+            "max_results": effective_max,
+            "result_count": len(all_listings),
+            "run_at": run_at,
+            "translate_to": effective_translate_results,
+        }
+        for fmt in [f.strip() for f in save_format.split(",") if f.strip()]:
+            try:
+                path = save_results(fmt, all_listings, meta)
+                if path:
+                    console.print(f"[green]✓[/green] Saved {fmt.upper()} → [bold]{path}[/bold]")
+                else:
+                    console.print(f"[yellow]Unknown save format:[/yellow] {fmt!r}. Use: json, csv, txt, html")
+            except Exception as exc:
+                console.print(f"[red]Failed to save {fmt}:[/red] {exc}")
+
+
+# ---------------------------------------------------------------------------
+# init command
+# ---------------------------------------------------------------------------
+
+# Providers that require a one-time human action before headless use
+_INIT_PROVIDERS: dict[str, dict] = {
+    "facebook": {
+        "label": "Facebook Marketplace",
+        "note": (
+            "Requires a logged-in Facebook session (cookies.json).\n"
+            "The browser opens facebook.com/marketplace — log in and the cookies\n"
+            "are saved automatically. Pass --cookies to specify the file path."
+        ),
+    },
+    "allegro_pl": {
+        "label": "Allegro Poland (allegro.pl)",
+        "note": (
+            "Allegro uses DataDome bot detection. The browser opens allegro.pl —\n"
+            "solve the CAPTCHA once and the session is saved to\n"
+            "~/.market-scout/allegro-profile/pl/"
+        ),
+    },
+    "allegro_cz": {
+        "label": "Allegro Czechia (allegro.cz)",
+        "note": (
+            "Allegro uses DataDome bot detection. The browser opens allegro.cz —\n"
+            "solve the CAPTCHA once and the session is saved to\n"
+            "~/.market-scout/allegro-profile/cz/"
+        ),
+    },
+    "allegro_sk": {
+        "label": "Allegro Slovakia (allegro.sk)",
+        "note": (
+            "Allegro uses DataDome bot detection. The browser opens allegro.sk —\n"
+            "solve the CAPTCHA once and the session is saved to\n"
+            "~/.market-scout/allegro-profile/sk/"
+        ),
+    },
+}
+
+
+@app.command()
+def init(
+    provider_name: str = typer.Argument(
+        None,
+        help=(
+            "Provider to initialise. One of: facebook, allegro_pl, allegro_cz, allegro_sk. "
+            "Omit to see the list of providers that require initialisation."
+        ),
+    ),
+    cookies: Optional[Path] = typer.Option(
+        None, "--cookies", "-c",
+        help="[Facebook only] Path to save the cookies JSON file. Defaults to cookies.json in the current directory.",
+    ),
+):
+    """Initialise a provider that requires a one-time browser session setup.
+
+    \b
+    Providers requiring init:
+      facebook     — log in to Facebook once; cookies.json is saved automatically
+      allegro_pl   — solve DataDome CAPTCHA once for allegro.pl
+      allegro_cz   — solve DataDome CAPTCHA once for allegro.cz
+      allegro_sk   — solve DataDome CAPTCHA once for allegro.sk
+
+    \b
+    Examples:
+      market-scout init
+      market-scout init facebook
+      market-scout init facebook --cookies ~/.market-scout/cookies.json
+      market-scout init allegro_pl
+      market-scout init allegro_cz
+    """
+    if provider_name is None:
+        t = Table(title="Providers requiring one-time initialisation", box=box.ROUNDED)
+        t.add_column("Provider", style="bold cyan")
+        t.add_column("Site")
+        t.add_column("What to do")
+        rows = {
+            "facebook":   ("facebook.com/marketplace", "Log in with your Facebook account"),
+            "allegro_pl": ("allegro.pl",                "Solve the DataDome CAPTCHA"),
+            "allegro_cz": ("allegro.cz",                "Solve the DataDome CAPTCHA"),
+            "allegro_sk": ("allegro.sk",                "Solve the DataDome CAPTCHA"),
+        }
+        for p, (site, action) in rows.items():
+            t.add_row(p, site, action)
+        out.print(t)
+        out.print(
+            "\n[dim]Run 'market-scout init <provider>' to open the browser and complete setup.[/dim]"
+        )
+        return
+
+    if provider_name not in _INIT_PROVIDERS:
+        console.print(f"[red]Unknown provider: {provider_name!r}[/red]")
+        console.print(f"Providers that need init: {', '.join(_INIT_PROVIDERS)}")
+        raise typer.Exit(code=1)
+
+    info = _INIT_PROVIDERS[provider_name]
+    console.print(f"\n[bold]Initialising:[/bold] {info['label']}")
+    console.print(f"[dim]{info['note']}[/dim]\n")
+
+    if provider_name == "facebook":
+        import asyncio
+        from market_scout.providers.worldwide.facebook.scraper import run_scrape
+        from market_scout.providers.worldwide.facebook.config import FbScraperConfig
+
+        cookie_path = cookies or Path("cookies.json")
+        console.print(
+            f"Opening Facebook Marketplace in a visible browser window.\n"
+            f"Log in and wait — the browser will close automatically once the\n"
+            f"session is established. Cookies will be saved to: [bold]{cookie_path}[/bold]\n"
+        )
+        cfg = FbScraperConfig(
+            search_query="",
+            max_listings=1,
+            max_scrolls=0,
+            headless=False,
+            cookies_file=cookie_path,
+        )
+        asyncio.run(run_scrape(cfg))
+        if cookie_path.exists():
+            out.print(f"\n[green]✓[/green] Cookies saved to [bold]{cookie_path}[/bold]")
+            out.print(
+                f"\n[dim]Now run searches with --cookies {cookie_path}[/dim]\n"
+                f"[dim]Or set it as default: market-scout config --set cookies={cookie_path}[/dim]"
+            )
+        else:
+            console.print(f"[yellow]Warning:[/yellow] cookies.json was not written. Did login complete?")
+
+    elif provider_name.startswith("allegro_"):
+        import asyncio
+        from market_scout.providers.multi.allegro.scraper import _PROFILE_DIR, _run_search
+        from market_scout.providers.base import SearchRequest
+
+        domain = provider_name.split("_")[1]  # "pl", "cz", "sk"
+        profile_dir = _PROFILE_DIR / domain
+        console.print(
+            f"Opening allegro.{domain} in a visible browser.\n"
+            f"Solve the CAPTCHA when it appears — the session will be saved to:\n"
+            f"  [bold]{profile_dir}[/bold]\n"
+            f"The browser will close automatically once the search page loads.\n"
+        )
+        req = SearchRequest(
+            query="test",
+            max_results=1,
+            headless=False,
+        )
+        asyncio.run(_run_search(domain, req))
+        if any(profile_dir.iterdir()):
+            out.print(f"\n[green]✓[/green] Session saved to [bold]{profile_dir}[/bold]")
+            out.print(f"[dim]Future headless searches for {provider_name} will reuse this session.[/dim]")
+        else:
+            console.print(f"[yellow]Warning:[/yellow] Profile directory is empty. Was the CAPTCHA solved?")
+
+
+# ---------------------------------------------------------------------------
+# providers command
+# ---------------------------------------------------------------------------
 
 @app.command()
 def providers():
@@ -240,6 +664,10 @@ def providers():
     out.print("\n[dim]Pass a country code to --provider to select all matching providers, e.g. --provider HU[/dim]")
 
 
+# ---------------------------------------------------------------------------
+# locations command
+# ---------------------------------------------------------------------------
+
 @app.command()
 def locations(
     country: Optional[str] = typer.Argument(
@@ -253,10 +681,7 @@ def locations(
         if not cities:
             console.print(f"[red]Unknown country code: {country.upper()}[/red]")
             raise typer.Exit(code=1)
-        t = Table(
-            title=f"Cities for {country.upper()} (Facebook slugs)",
-            box=box.ROUNDED,
-        )
+        t = Table(title=f"Cities for {country.upper()} (Facebook slugs)", box=box.ROUNDED)
         t.add_column("Slug", style="bold cyan")
         t.add_column("Name")
         t.add_column("Default radius km", style="green")
@@ -264,9 +689,7 @@ def locations(
         for c in cities:
             t.add_row(c["slug"], c["name"], str(c["radius_km"]), c.get("fb_id", ""))
         out.print(t)
-        out.print(
-            f"\n[dim]Usage: --location {country.upper()}   (expands to all {len(cities)} cities)[/dim]"
-        )
+        out.print(f"\n[dim]Usage: --location {country.upper()}   (expands to all {len(cities)} cities)[/dim]")
     else:
         countries = list_countries()
         t = Table(title="Known European countries", box=box.ROUNDED)
@@ -276,28 +699,23 @@ def locations(
         for row in countries:
             t.add_row(row["code"], row["name"], str(row["city_count"]))
         out.print(t)
-        out.print(
-            "\n[dim]Run 'market-scout locations DE' to see cities for a country.[/dim]"
-        )
+        out.print("\n[dim]Run 'market-scout locations DE' to see cities for a country.[/dim]")
 
+
+# ---------------------------------------------------------------------------
+# find-location command
+# ---------------------------------------------------------------------------
 
 @app.command("find-location")
 def find_location(
     slug: str = typer.Argument(..., help="City slug or name to look up (e.g. 'gyor', 'pecs', 'miskolc')"),
-    cookies: Optional[Path] = typer.Option(
-        None, "--cookies", "-c",
-        help="Facebook cookies JSON. If provided, the browser starts logged in.",
-    ),
+    cookies: Optional[Path] = typer.Option(None, "--cookies", "-c", help="Facebook cookies JSON."),
     headless: bool = typer.Option(
         False, "--no-headless/--headless",
-        help="Default: visible browser (--no-headless). Pass --headless only if cookies are valid and no login is needed.",
+        help="Default: visible browser. Pass --headless only if cookies are valid.",
     ),
 ):
     """Look up the numeric Facebook city ID for a slug that FB doesn't recognise.
-
-    Facebook silently drops unrecognised city slugs (redirects to /category/search/).
-    Numeric IDs always work. This command opens a browser, navigates to
-    facebook.com/marketplace/<slug>, and extracts the city ID from the page source.
 
     \b
     Examples:
@@ -312,7 +730,11 @@ def find_location(
     from market_scout.providers.worldwide.facebook.scraper import discover_city_id
 
     console.print(f"[cyan]Looking up Facebook city ID for:[/cyan] [bold]{slug}[/bold]")
-    city_id = asyncio.run(discover_city_id(slug, cookies or Path("cookies.json"), headless=headless))
+    cfg = _load_cfg()
+    cookie_path = cookies
+    if cookie_path is None and cfg.get("cookies"):
+        cookie_path = Path(cfg["cookies"]).expanduser()
+    city_id = asyncio.run(discover_city_id(slug, cookie_path or Path("cookies.json"), headless=headless))
     if city_id:
         out.print(f"\n[green]Found ID:[/green] [bold]{city_id}[/bold]")
         out.print(f"\n[dim]Use it like:[/dim]")
@@ -320,10 +742,58 @@ def find_location(
     else:
         console.print(
             f"[yellow]Could not find a numeric ID for '{slug}'.[/yellow]\n"
-            f"Try running with --no-headless and check the browser URL bar after it loads.\n"
-            f"Or look up the city manually on facebook.com/marketplace and note the city ID in the URL."
+            f"Try running with --no-headless and check the browser URL bar after it loads."
         )
         raise typer.Exit(code=1)
 
 
+# ---------------------------------------------------------------------------
+# config command
+# ---------------------------------------------------------------------------
 
+@app.command()
+def config(
+    show: bool = typer.Option(False, "--show", help="Show the current config file path and contents."),
+    set_: Optional[str] = typer.Option(None, "--set", help="Set a config value: key=value (e.g. --set openrouter.api_key=sk-or-v1-...)"),
+    init: bool = typer.Option(False, "--init", help="Create the config file with defaults if it doesn't exist."),
+):
+    """View and edit the global configuration file.
+
+    \b
+    Config file: ~/.market-scout/config.toml
+
+    Examples:
+      market-scout config --show
+      market-scout config --init
+      market-scout config --set openrouter.api_key=sk-or-v1-your-key-here
+      market-scout config --set providers=hardverapro,jofogas,vatera
+      market-scout config --set max_results=50
+      market-scout config --set cookies=~/.market-scout/cookies.json
+    """
+    path = cfg_module.init_config_file()
+
+    if init:
+        out.print(f"[green]Config file ready:[/green] {path}")
+        return
+
+    if set_:
+        if "=" not in set_:
+            console.print(f"[red]Invalid format. Use key=value, e.g. --set openrouter.api_key=abc[/red]")
+            raise typer.Exit(code=1)
+        key, value = set_.split("=", 1)
+        cfg_module.set_value(key.strip(), value.strip())
+        out.print(f"[green]Set[/green] [bold]{key.strip()}[/bold] = {value.strip()}")
+        out.print(f"[dim]Config file: {path}[/dim]")
+        return
+
+    if show or (not init and not set_):
+        out.print(f"[bold]Config file:[/bold] {path}")
+        if path.exists():
+            out.print()
+            out.print(path.read_text(encoding="utf-8"))
+        else:
+            out.print("[dim](file does not exist yet — run 'market-scout config --init')[/dim]")
+
+
+if __name__ == "__main__":
+    app()

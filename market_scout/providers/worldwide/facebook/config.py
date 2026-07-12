@@ -13,17 +13,11 @@ class FbScraperConfig:
     scrape_details: bool = False
     max_detail_pages: int = 10
     cookies_file: Path = field(default_factory=lambda: Path("cookies.json"))
-    output_dir: Path = field(default_factory=lambda: Path("output"))
-    screenshot_dir: Path = field(default_factory=lambda: Path("screenshots"))
     max_retries: int = 3
     min_price: int = 0
     max_price: int = 0
     sort_by: str = ""
     radius_km: int = 0
-
-    def __post_init__(self):
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.screenshot_dir.mkdir(parents=True, exist_ok=True)
 
     @property
     def marketplace_url(self) -> str:

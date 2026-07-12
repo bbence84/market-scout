@@ -6,5 +6,3 @@ __pycache__/
 dist/
 build/
 cookies.json
-output/
-screenshots/
