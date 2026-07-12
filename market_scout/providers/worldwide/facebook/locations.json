@@ -1,0 +1,278 @@
+{
+  "AT": {
+    "name": "Austria",
+    "cities": [
+      {"slug": "vienna",     "radius_km": 120, "name": "Vienna"},
+      {"slug": "graz",       "radius_km": 80,  "name": "Graz"},
+      {"slug": "salzburg",   "radius_km": 80,  "name": "Salzburg"},
+      {"slug": "innsbruck",  "radius_km": 80,  "name": "Innsbruck"},
+      {"slug": "linz",       "radius_km": 80,  "name": "Linz"}
+    ]
+  },
+  "BE": {
+    "name": "Belgium",
+    "cities": [
+      {"slug": "brussels",   "radius_km": 80,  "name": "Brussels"},
+      {"slug": "antwerp",    "radius_km": 60,  "name": "Antwerp"},
+      {"slug": "ghent",      "radius_km": 60,  "name": "Ghent"},
+      {"slug": "liege",      "radius_km": 60,  "name": "Liège"}
+    ]
+  },
+  "BG": {
+    "name": "Bulgaria",
+    "cities": [
+      {"slug": "sofia",      "radius_km": 150, "name": "Sofia"},
+      {"slug": "plovdiv",    "radius_km": 100, "name": "Plovdiv"},
+      {"slug": "varna",      "radius_km": 100, "name": "Varna"}
+    ]
+  },
+  "CH": {
+    "name": "Switzerland",
+    "cities": [
+      {"slug": "zurich",     "radius_km": 80,  "name": "Zürich"},
+      {"slug": "geneva",     "radius_km": 80,  "name": "Geneva"},
+      {"slug": "bern",       "radius_km": 60,  "name": "Bern"},
+      {"slug": "basel",      "radius_km": 60,  "name": "Basel"}
+    ]
+  },
+  "CZ": {
+    "name": "Czech Republic",
+    "cities": [
+      {"slug": "prague",     "radius_km": 150, "name": "Prague"},
+      {"slug": "brno",       "radius_km": 100, "name": "Brno"},
+      {"slug": "ostrava",    "radius_km": 80,  "name": "Ostrava"}
+    ]
+  },
+  "DE": {
+    "name": "Germany",
+    "cities": [
+      {"slug": "berlin",     "radius_km": 150, "name": "Berlin"},
+      {"slug": "hamburg",    "radius_km": 120, "name": "Hamburg"},
+      {"slug": "munich",     "radius_km": 120, "name": "Munich"},
+      {"slug": "cologne",    "radius_km": 100, "name": "Cologne"},
+      {"slug": "frankfurt",  "radius_km": 100, "name": "Frankfurt"},
+      {"slug": "stuttgart",  "radius_km": 100, "name": "Stuttgart"},
+      {"slug": "dresden",    "radius_km": 100, "name": "Dresden"},
+      {"slug": "hannover",   "radius_km": 100, "name": "Hannover"}
+    ]
+  },
+  "DK": {
+    "name": "Denmark",
+    "cities": [
+      {"slug": "copenhagen", "radius_km": 120, "name": "Copenhagen"},
+      {"slug": "aarhus",     "radius_km": 100, "name": "Aarhus"},
+      {"slug": "odense",     "radius_km": 80,  "name": "Odense"}
+    ]
+  },
+  "EE": {
+    "name": "Estonia",
+    "cities": [
+      {"slug": "tallinn",    "radius_km": 150, "name": "Tallinn"},
+      {"slug": "tartu",      "radius_km": 100, "name": "Tartu"}
+    ]
+  },
+  "ES": {
+    "name": "Spain",
+    "cities": [
+      {"slug": "madrid",     "radius_km": 150, "name": "Madrid"},
+      {"slug": "barcelona",  "radius_km": 100, "name": "Barcelona"},
+      {"slug": "seville",    "radius_km": 100, "name": "Seville"},
+      {"slug": "valencia",   "radius_km": 80,  "name": "Valencia"},
+      {"slug": "bilbao",     "radius_km": 80,  "name": "Bilbao"},
+      {"slug": "zaragoza",   "radius_km": 80,  "name": "Zaragoza"},
+      {"slug": "malaga",     "radius_km": 80,  "name": "Málaga"}
+    ]
+  },
+  "FI": {
+    "name": "Finland",
+    "cities": [
+      {"slug": "helsinki",   "radius_km": 150, "name": "Helsinki"},
+      {"slug": "tampere",    "radius_km": 120, "name": "Tampere"},
+      {"slug": "turku",      "radius_km": 100, "name": "Turku"},
+      {"slug": "oulu",       "radius_km": 150, "name": "Oulu"}
+    ]
+  },
+  "FR": {
+    "name": "France",
+    "cities": [
+      {"slug": "paris",      "radius_km": 150, "name": "Paris"},
+      {"slug": "lyon",       "radius_km": 100, "name": "Lyon"},
+      {"slug": "marseille",  "radius_km": 100, "name": "Marseille"},
+      {"slug": "toulouse",   "radius_km": 100, "name": "Toulouse"},
+      {"slug": "bordeaux",   "radius_km": 100, "name": "Bordeaux"},
+      {"slug": "lille",      "radius_km": 80,  "name": "Lille"},
+      {"slug": "strasbourg", "radius_km": 80,  "name": "Strasbourg"},
+      {"slug": "nantes",     "radius_km": 100, "name": "Nantes"}
+    ]
+  },
+  "GB": {
+    "name": "United Kingdom",
+    "cities": [
+      {"slug": "london",     "radius_km": 100, "name": "London"},
+      {"slug": "manchester", "radius_km": 80,  "name": "Manchester"},
+      {"slug": "birmingham", "radius_km": 80,  "name": "Birmingham"},
+      {"slug": "glasgow",    "radius_km": 80,  "name": "Glasgow"},
+      {"slug": "leeds",      "radius_km": 80,  "name": "Leeds"},
+      {"slug": "bristol",    "radius_km": 80,  "name": "Bristol"},
+      {"slug": "edinburgh",  "radius_km": 80,  "name": "Edinburgh"},
+      {"slug": "newcastle",  "radius_km": 80,  "name": "Newcastle"}
+    ]
+  },
+  "GR": {
+    "name": "Greece",
+    "cities": [
+      {"slug": "athens",         "radius_km": 150, "name": "Athens"},
+      {"slug": "thessaloniki",   "radius_km": 120, "name": "Thessaloniki"},
+      {"slug": "heraklion",      "radius_km": 80,  "name": "Heraklion"}
+    ]
+  },
+  "HR": {
+    "name": "Croatia",
+    "cities": [
+      {"slug": "zagreb",     "radius_km": 150, "name": "Zagreb"},
+      {"slug": "split",      "radius_km": 100, "name": "Split"},
+      {"slug": "rijeka",     "radius_km": 80,  "name": "Rijeka"}
+    ]
+  },
+  "HU": {
+    "name": "Hungary",
+    "cities": [
+      {"slug": "budapest",              "radius_km": 150, "name": "Budapest"},
+      {"slug": "debrecen",  "fb_id": "109375022413858",               "radius_km": 100, "name": "Debrecen"},
+      {"slug": "pecs",    "fb_id": "104083222960076",                 "radius_km": 80, "name": "Pécs"},
+      {"slug": "gyor",   "fb_id": "109233199097493",                  "radius_km": 80, "name": "Győr"},
+      {"slug": "miskolc",  "fb_id": "114759051873504", "radius_km": 80, "name": "Miskolc"}
+    ]
+  },
+  "IE": {
+    "name": "Ireland",
+    "cities": [
+      {"slug": "dublin",     "radius_km": 120, "name": "Dublin"},
+      {"slug": "cork",       "radius_km": 100, "name": "Cork"},
+      {"slug": "galway",     "radius_km": 80,  "name": "Galway"}
+    ]
+  },
+  "IT": {
+    "name": "Italy",
+    "cities": [
+      {"slug": "milan",      "radius_km": 100, "name": "Milan"},
+      {"slug": "rome",       "radius_km": 120, "name": "Rome"},
+      {"slug": "naples",     "radius_km": 100, "name": "Naples"},
+      {"slug": "turin",      "radius_km": 80,  "name": "Turin"},
+      {"slug": "bologna",    "radius_km": 80,  "name": "Bologna"},
+      {"slug": "florence",   "radius_km": 80,  "name": "Florence"},
+      {"slug": "venice",     "radius_km": 80,  "name": "Venice"},
+      {"slug": "bari",       "radius_km": 100, "name": "Bari"},
+      {"slug": "palermo",    "radius_km": 100, "name": "Palermo"}
+    ]
+  },
+  "LT": {
+    "name": "Lithuania",
+    "cities": [
+      {"slug": "vilnius",    "radius_km": 150, "name": "Vilnius"},
+      {"slug": "kaunas",     "radius_km": 100, "name": "Kaunas"}
+    ]
+  },
+  "LU": {
+    "name": "Luxembourg",
+    "cities": [
+      {"slug": "luxembourg", "radius_km": 60,  "name": "Luxembourg City"}
+    ]
+  },
+  "LV": {
+    "name": "Latvia",
+    "cities": [
+      {"slug": "riga",       "radius_km": 150, "name": "Riga"},
+      {"slug": "daugavpils", "radius_km": 80,  "name": "Daugavpils"}
+    ]
+  },
+  "NL": {
+    "name": "Netherlands",
+    "cities": [
+      {"slug": "amsterdam",  "radius_km": 80,  "name": "Amsterdam"},
+      {"slug": "rotterdam",  "radius_km": 60,  "name": "Rotterdam"},
+      {"slug": "the-hague",  "radius_km": 60,  "name": "The Hague"},
+      {"slug": "eindhoven",  "radius_km": 60,  "name": "Eindhoven"},
+      {"slug": "utrecht",    "radius_km": 60,  "name": "Utrecht"}
+    ]
+  },
+  "NO": {
+    "name": "Norway",
+    "cities": [
+      {"slug": "oslo",       "radius_km": 150, "name": "Oslo"},
+      {"slug": "bergen",     "radius_km": 120, "name": "Bergen"},
+      {"slug": "trondheim",  "radius_km": 120, "name": "Trondheim"},
+      {"slug": "stavanger",  "radius_km": 100, "name": "Stavanger"}
+    ]
+  },
+  "PL": {
+    "name": "Poland",
+    "cities": [
+      {"slug": "warsaw",     "radius_km": 150, "name": "Warsaw"},
+      {"slug": "krakow",     "radius_km": 120, "name": "Kraków"},
+      {"slug": "wroclaw",    "radius_km": 120, "name": "Wrocław"},
+      {"slug": "gdansk",     "radius_km": 100, "name": "Gdańsk"},
+      {"slug": "poznan",     "radius_km": 100, "name": "Poznań"},
+      {"slug": "lodz",       "radius_km": 80,  "name": "Łódź"},
+      {"slug": "katowice",   "radius_km": 80,  "name": "Katowice"}
+    ]
+  },
+  "PT": {
+    "name": "Portugal",
+    "cities": [
+      {"slug": "lisbon",     "radius_km": 150, "name": "Lisbon"},
+      {"slug": "porto",      "radius_km": 120, "name": "Porto"},
+      {"slug": "faro",       "radius_km": 80,  "name": "Faro"}
+    ]
+  },
+  "RO": {
+    "name": "Romania",
+    "cities": [
+      {"slug": "bucharest",  "radius_km": 150, "name": "Bucharest"},
+      {"slug": "cluj-napoca","radius_km": 120, "name": "Cluj-Napoca"},
+      {"slug": "timisoara",  "radius_km": 100, "name": "Timișoara"},
+      {"slug": "iasi",       "radius_km": 100, "name": "Iași"},
+      {"slug": "brasov",     "radius_km": 80,  "name": "Brașov"}
+    ]
+  },
+  "RS": {
+    "name": "Serbia",
+    "cities": [
+      {"slug": "belgrade",   "radius_km": 150, "name": "Belgrade"},
+      {"slug": "novi-sad",   "radius_km": 80,  "name": "Novi Sad"}
+    ]
+  },
+  "SE": {
+    "name": "Sweden",
+    "cities": [
+      {"slug": "stockholm",  "radius_km": 150, "name": "Stockholm"},
+      {"slug": "gothenburg", "radius_km": 120, "name": "Gothenburg"},
+      {"slug": "malmo",      "radius_km": 80,  "name": "Malmö"},
+      {"slug": "uppsala",    "radius_km": 80,  "name": "Uppsala"},
+      {"slug": "linkoping",  "radius_km": 100, "name": "Linköping"}
+    ]
+  },
+  "SI": {
+    "name": "Slovenia",
+    "cities": [
+      {"slug": "ljubljana",  "radius_km": 120, "name": "Ljubljana"},
+      {"slug": "maribor",    "radius_km": 80,  "name": "Maribor"}
+    ]
+  },
+  "SK": {
+    "name": "Slovakia",
+    "cities": [
+      {"slug": "bratislava", "radius_km": 120, "name": "Bratislava"},
+      {"slug": "kosice",     "radius_km": 100, "name": "Košice"},
+      {"slug": "presov",     "radius_km": 80,  "name": "Prešov"}
+    ]
+  },
+  "UA": {
+    "name": "Ukraine",
+    "cities": [
+      {"slug": "kyiv",       "radius_km": 200, "name": "Kyiv"},
+      {"slug": "lviv",       "radius_km": 150, "name": "Lviv"},
+      {"slug": "odessa",     "radius_km": 150, "name": "Odessa"}
+    ]
+  }
+}
