@@ -2,7 +2,7 @@
 
 A CLI tool for searching product marketplaces across Europe (and beyond). Built for finding rare items — retro computers, vintage collectibles, obscure parts — across multiple countries at once. The backend is modular: providers are independent plugins, so new marketplaces can be added without touching the core.
 
-**Current providers:** Facebook Marketplace (worldwide · Playwright), Hardverapró · Jófogás · Vatera (Hungary), Bazoš.cz · Bazoš.sk (Czech Republic/Slovakia), Kleinanzeigen (Germany), Allegro.pl/cz/sk (Poland/Czechia/Slovakia · Playwright), OLX.ua/pl/ro/pt/bg (Ukraine/Poland/Romania/Portugal/Bulgaria · curl_cffi JSON API)
+**Current providers:** Facebook Marketplace (worldwide · Playwright), Hardverapró · Jófogás · Vatera (Hungary), Bazoš.cz · Bazoš.sk (Czech Republic/Slovakia), Kleinanzeigen (Germany), Allegro.pl/cz/sk (Poland/Czechia/Slovakia · Playwright), OLX.ua/pl/ro/pt/bg (Ukraine/Poland/Romania/Portugal/Bulgaria · curl_cffi JSON API), Wallapop (Spain/Italy/Portugal · httpx REST API), Willhaben · Shpock (Austria · httpx JSON/GraphQL API), Leboncoin (France · httpx mobile API), Subito.it (Italy · curl_cffi __NEXT_DATA__)
 
 ---
 
@@ -28,9 +28,12 @@ A CLI tool for searching product marketplaces across Europe (and beyond). Built 
 
 ### Output
 - **Console table** always shown — numbered rows, sorted by provider, flag emojis, clickable OSC 8 links
-- **File output** (`--save json/csv/txt/html`) — timestamped files in `output/YYYY-MM-DD/`, all formats include search metadata
+- **File output** (`--save json/csv/txt/html`) — timestamped files in `output/YYYY-MM-DD/`, all formats include search metadata and `ai_match` field
 - HTML output: light typewriter-font table, ready to share or open in a browser
-- `--output json` for piping results to other tools
+
+### Description and AI analysis
+- **`--details`** — fetches each listing's detail page to collect the full description. Works for all providers (jofogas extracts it for free from the search-page JSON; Facebook, Hardverapró, and Vatera make an extra HTTP/browser request per listing)
+- **`--details-ai "question"`** — after fetching descriptions, the LLM evaluates each listing against your free-text question and assigns `YES` / `MAYBE` / `NO` with a one-sentence reason. Displayed as a coloured column in the table and as numbered reasoning lines below it. Requires OpenRouter key.
 
 ### Global configuration (`~/.market-scout/config.toml`)
 - Set default providers, location, max results, cookies path, user language
@@ -167,7 +170,6 @@ market-scout config --set location=HU
 | `location` | `""` | Default FB location when `--location` is omitted |
 | `radius` | `0` | Default FB search radius in km |
 | `max_results` | `30` | Default max results per provider/city |
-| `output` | `"table"` | Default output format (`table` or `json`) |
 | `headless` | `true` | Run FB browser headlessly by default |
 | `cookies` | `""` | Path to FB cookies JSON file |
 | `user_lang` | `"en"` | Target language for automatic result translation. Titles are translated to this language after every search when an OpenRouter key is configured. Set to `""` to disable. Examples: `"en"`, `"de"`, `"hu"`, `"pl"` |
@@ -315,13 +317,13 @@ market-scout search [OPTIONS]
 | `--max-results` | `-n` | INT | `30` (config) | Max listings per city search (Facebook) or per page-run (others) |
 | `--cookies` | `-c` | PATH | *(from config)* | [Facebook only] Path to cookies JSON |
 | `--headless` / `--no-headless` | | flag | headless | [Facebook only] Run Chromium visibly for debugging or first-time login |
-| `--details` / `--no-details` | | flag | no-details | [Facebook only] Open each listing's detail page for description, seller, condition |
+| `--details` / `--no-details` | | flag | no-details | Open each listing's detail page to collect the full description. Slower — one extra request per listing. Required for `--details-ai`. |
+| `--details-ai` | | TEXT | | After fetching descriptions (implies `--details`), ask the LLM whether each listing matches your free-text question. Adds a `YES` / `MAYBE` / `NO` confidence column to the table, with full reasoning printed below. Requires OpenRouter key. Example: `--details-ai "Is it really an Amiga 500 in good condition?"` |
 | `--radius` | | INT | `0` (config) | [Facebook only] Override search radius in km for all cities |
 | `--translate-to` | | TEXT | | Translate the query into this language before searching (requires OpenRouter key). Interactive approval. Example: `HU`, `DE`, `PL` |
 | `--translate-results` | | TEXT | | Override `user_lang` for this run — translate result titles into the given language. Requires OpenRouter key. Example: `EN` |
 | `--no-translate` | | flag | | Skip automatic title translation even if `user_lang` is configured. |
 | `--suggest-queries` | | flag | | Ask LLM to suggest alternative search terms — abbreviations, synonyms, regional names. Interactive selection with numbering, extras, and full override. Requires OpenRouter key. |
-| `--output` | `-o` | `table`\|`json` | `table` | Console output format |
 | `--save` | | TEXT | | Save results to a timestamped file in `output/YYYY-MM-DD/`. Formats: `json`, `csv`, `txt`, `html`. Comma-separated for multiple: `--save csv,html`. Console output is always shown. |
 | `--dry-run` | | flag | | [Facebook only] Show resolved city/radius plan without scraping |
 | `--debug` | | flag | | Print provider-level debug info: URLs, redirects, response size |
@@ -353,7 +355,7 @@ market-scout search --query "C64" --location berlin --no-headless
 
 # Facebook — full detail pages + JSON output
 market-scout search --query "Amiga 500" --location DE,AT \
-  --details --output json --cookies cookies.json
+  --details --cookies cookies.json
 
 # Suggest alternative search terms (interactive, requires OpenRouter key)
 market-scout search --query "Amiga 500" --provider "HU,CZ,SK" --suggest-queries
@@ -370,6 +372,17 @@ market-scout search --query "Amiga 500" --provider HU --no-translate
 # Save results to file (timestamped, in output/YYYY-MM-DD/)
 market-scout search --query "Amiga 500" --provider "HU,CZ" --save html
 market-scout search --query "C64" --provider "olx_pl,bazos_cz" --save "csv,json,html"
+
+# Fetch full descriptions for each listing
+market-scout search --query "Amiga 500" --provider "jofogas,hardverapro" --details
+
+# AI confidence scoring — evaluates each description against your question
+market-scout search --query "Amiga 500" --provider "jofogas,hardverapro,olx_pl" \
+  --details-ai "Is this really an Amiga 500 home computer in working condition?"
+
+# Combine: details + AI scoring + save to HTML
+market-scout search --query "Amiga 500" --provider "HU,CZ,SK" \
+  --details-ai "Is it an Amiga 500 in good condition?" --save html
 
 # Dry run: see FB city expansion without scraping
 market-scout search --query "Spectrum" --location DE,AT,PL,HU --dry-run
@@ -495,6 +508,11 @@ market-scout providers
 │ olx_ro       │ RO        │ nationwide only                 │
 │ olx_pt       │ PT        │ nationwide only                 │
 │ olx_bg       │ BG        │ nationwide only                 │
+│ wallapop     │ ES IT PT GB│ geo-filtered by country        │
+│ willhaben    │ AT        │ nationwide only                 │
+│ shpock       │ AT        │ nationwide only                 │
+│ leboncoin    │ FR        │ nationwide only                 │
+│ subito       │ IT        │ nationwide only                 │
 └──────────────┴───────────┴─────────────────────────────────┘
 ```
 
@@ -509,6 +527,17 @@ market-scout search --query "Amiga 500" --provider RO   # → facebook + olx_ro
 market-scout search --query "Amiga 500" --provider PT   # → facebook + olx_pt
 market-scout search --query "Amiga 500" --provider BG   # → facebook + olx_bg
 market-scout search --query "Amiga 500" --provider UA   # → facebook + olx_ua
+market-scout search --query "Amiga 500" --provider ES   # → facebook + wallapop (Spain geo-filter)
+market-scout search --query "Amiga 500" --provider IT   # → facebook + wallapop (Italy geo-filter)
+market-scout search --query "Amiga 500" --provider AT   # → facebook + willhaben + shpock
+market-scout search --query "Amiga 500" --provider FR   # → facebook + leboncoin
+market-scout search --query "Amiga 500" --provider IT   # → facebook + wallapop + subito
+```
+
+**Note on Wallapop location filtering:** Wallapop operates a single global listing pool across Spain, Italy, and Portugal. Passing a country code (`ES`, `IT`, `PT`) sets a geographic bounding box centred on that country and post-filters results by `country_code`. Without a location token, all countries are searched together. Multiple country codes run as separate geo-filtered API calls:
+```bash
+# Search Spain + Italy together
+market-scout search --query "Amiga" --provider wallapop --location "ES,IT"
 ```
 
 **Note on Allegro (DataDome anti-bot):** Allegro uses DataDome bot detection, which blocks plain HTTP requests. On first use per domain, run with `--no-headless` to solve the CAPTCHA once in the browser window. The session is saved to `~/.market-scout/allegro-profile/{pl|cz|sk}/` and reused for subsequent runs:
@@ -667,6 +696,27 @@ market-scout/
           provider_ro.py            # OlxRoProvider  (olx.ro, RON)
           provider_pt.py            # OlxPtProvider  (olx.pt, EUR)
           provider_bg.py            # OlxBgProvider  (olx.bg, BGN)
+        wallapop/
+          __init__.py
+          provider.py               # WallapopProvider — httpx REST API, geo-filtered by country
+      at/                           # Providers specific to Austria
+        __init__.py
+        willhaben/
+          __init__.py
+          provider.py               # WillhabenProvider — httpx JSON API (x-wh-client header)
+        shpock/
+          __init__.py
+          provider.py               # ShpockProvider — httpx GraphQL API (Austria-anchored)
+      fr/                           # Providers specific to France
+        __init__.py
+        leboncoin/
+          __init__.py
+          provider.py               # LeboncoinProvider — httpx mobile JSON API (no auth)
+      it/                           # Providers specific to Italy
+        __init__.py
+        subito/
+          __init__.py
+          provider.py               # SubitoProvider — curl_cffi + __NEXT_DATA__ HTML parsing
         __init__.py
         bazos/
           __init__.py
@@ -723,9 +773,28 @@ Provider.search(req)
   │    curl_cffi Chrome TLS impersonation → REST API /api/v1/offers/?query=...
   │    No auth, no cookies, no login required
   │    UA=UAH, PL=PLN, RO=RON, PT=EUR, BG=BGN (dual display with EUR)
+  ├─ WallapopProvider  (countries=["ES","IT","PT","GB"])
+  │    httpx REST API api.wallapop.com/api/v3/search (most_relevance order)
+  │    Single global listing pool; country tokens → lat/lng anchor + client-side filter
   │
-  ▼
-list[Listing]
+  ├─ WillhabenProvider  (countries=["AT"])
+  │    httpx JSON API willhaben.at/webapi/iad/search — requires x-wh-client header
+  │    225+ results for popular queries; pagination via page param; EUR only
+  │
+  ├─ ShpockProvider  (countries=["AT"])
+  │    httpx GraphQL POST shpock.com/graphql — no auth required
+  │    Global pool anchored to Vienna coords; client-side AT postcode filter
+  │
+  ├─ LeboncoinProvider  (countries=["FR"])
+  │    httpx POST api.leboncoin.fr/finder/search — mobile User-Agent required
+  │    ~210 results for popular queries; full description in search results
+  │    Datadome protection: auto-rotates UA on 403
+  │
+  ├─ SubitoProvider  (countries=["IT"])
+  │    curl_cffi Chrome impersonation → HTML page → __NEXT_DATA__ JSON extraction
+  │    No public API; Akamai WAF blocks plain httpx (needs TLS fingerprint match)
+  │    202 results / 7 pages for popular queries; client-side price filter
+  │
   │  (--translate-results) → llm.py → OpenRouter → titles translated in batch
   ▼
 output.py → Rich table (clickable OSC 8 links, country flag emoji) or JSON
@@ -1030,7 +1099,6 @@ MCP server implementation: `mcp` Python package (`pip install mcp`). Each `@tool
 |----------|---------|----------|-------|
 | **Marktplaats** | Netherlands | Unofficial REST API | eBay subsidiary, dominant in NL |
 | **Leboncoin** | France | httpx + session cookies | Largest French classifieds |
-| **Wallapop** | Spain | Unofficial JSON API | Well-documented by open-source community |
 | **Subito.it** | Italy | JSON API from DevTools | Large Italian classifieds |
 | **Ricardo.ch** | Switzerland | Official API | Requires API key registration |
 | **DBA.dk** | Denmark | JSON API | Dominant Danish classifieds |

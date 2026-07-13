@@ -199,3 +199,94 @@ def translate_listings(
         chunk = titles[i: i + _BATCH_SIZE]
         result.extend(_translate_batch(chunk, target_language, model, api_key, base_url))
     return result
+
+
+def analyse_listing(
+    description: str,
+    question: str,
+    model: str,
+    api_key: str,
+    base_url: str,
+    search_query: str = "",
+    title: str = "",
+    user_lang: str = "en",
+) -> str:
+    """
+    Evaluate whether a listing matches the user's question.
+    Uses the listing title and description together with the original search query.
+    Returns a string starting with "YES", "MAYBE", or "NO" followed by " — <reason>".
+    The reason sentence is written in user_lang.
+    """
+    # Build context from whatever is available
+    context_parts = []
+    if search_query:
+        context_parts.append(f"Search query (what the user was looking for): {search_query}")
+    context_parts.append(f"Buyer's question: {question}")
+    if title:
+        context_parts.append(f"\nListing title: {title}")
+    if description.strip():
+        context_parts.append(f"Listing description:\n{description[:1500]}")
+    else:
+        context_parts.append("Listing description: (not available)")
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are evaluating a marketplace listing to determine whether it matches "
+                "a buyer's intent. "
+                "You are given the original search query, the buyer's specific question, "
+                "the listing title, and the listing description. "
+                f"Write your reasoning sentence in {user_lang}. "
+                "Reply with EXACTLY one of: YES, MAYBE, or NO — then a space-dash-space ' — ' "
+                "and ONE concise sentence explaining your reasoning. "
+                "Rules:\n"
+                "- Use BOTH the title and description to judge.\n"
+                "- If the title or description is too vague, too short, or does not provide "
+                "enough information to answer the question confidently, answer MAYBE.\n"
+                "- If the title clearly matches but the description adds nothing relevant, "
+                "that is still MAYBE — not YES.\n"
+                "- Only answer YES if the combined evidence makes it highly likely the listing "
+                "matches the buyer's question.\n"
+                "- Only answer NO if the listing clearly does not match.\n"
+                "Examples (verdicts are always English, reason in the requested language):\n"
+                "YES — title and description both confirm it is an Amiga 500 in working condition\n"
+                "MAYBE — title says Amiga 500 but description gives no details about condition\n"
+                "MAYBE — description is too short to judge\n"
+                "NO — this is a Fiat 500 car, not a computer"
+            ),
+        },
+        {
+            "role": "user",
+            "content": "\n".join(context_parts),
+        },
+    ]
+    try:
+        raw = _chat(messages, model, api_key, base_url).strip()
+        # Normalise: ensure it starts with one of the three verdicts
+        upper = raw.upper()
+        for verdict in ("YES", "MAYBE", "NO"):
+            if upper.startswith(verdict):
+                return raw
+        # If model returned something unexpected, classify as MAYBE
+        return f"MAYBE — {raw[:120]}"
+    except Exception as exc:
+        return f"MAYBE — analysis failed: {str(exc)[:80]}"
+
+
+def analyse_listings(
+    listings_with_desc: list[tuple[int, str]],  # (index, description)
+    question: str,
+    model: str,
+    api_key: str,
+    base_url: str,
+    search_query: str = "",
+) -> dict[int, str]:
+    """
+    Analyse multiple listings sequentially. Returns {index: result_string}.
+    Only processes listings that have a non-empty description.
+    """
+    results: dict[int, str] = {}
+    for idx, desc in listings_with_desc:
+        results[idx] = analyse_listing(desc, question, model, api_key, base_url, search_query)
+    return results

@@ -196,4 +196,49 @@ class VateraProvider:
                 page += 1
                 time.sleep(random.uniform(0.5, 1.2))
 
+        # If --details requested, fetch each listing page for full description
+        if req.scrape_details and results:
+            if req.debug:
+                print(f"[vatera] Fetching detail pages for {len(results)} listing(s)...", flush=True)
+            with httpx.Client(headers=_make_headers(), follow_redirects=True, timeout=15) as detail_client:
+                for lst in results:
+                    if not lst.url or lst.description:
+                        continue
+                    try:
+                        resp = detail_client.get(lst.url)
+                        if resp.status_code == 200:
+                            detail_soup = BeautifulSoup(resp.text, "lxml")
+                            box = detail_soup.select_one(".userprodbox")
+                            if box:
+                                description_text = ""
+
+                                # Primary: find the "Eladó leírása a termékről" section
+                                # Structure: div.tw-mt-6 > div > div.tw-break-words
+                                # containing h3 with 'leírás' and sibling div with text
+                                for section in box.select("div.tw-mt-6"):
+                                    h3 = section.select_one("h3")
+                                    if h3 and "leírás" in h3.get_text().lower():
+                                        # Get all text from this section, skip the h3 itself
+                                        parts = []
+                                        for el in section.select("span, p"):
+                                            t = el.get_text(" ", strip=True)
+                                            if t and t not in (".", ".:.", ":"):
+                                                parts.append(t)
+                                        if parts:
+                                            description_text = " ".join(parts)[:2000]
+                                        break
+
+                                # Fallback: <p> tags directly in .userprodbox
+                                if not description_text:
+                                    parts = [p.get_text(" ", strip=True)
+                                             for p in box.select("p") if p.get_text(strip=True)]
+                                    if parts:
+                                        description_text = " ".join(parts)[:2000]
+
+                                if description_text:
+                                    lst.description = description_text
+                        time.sleep(random.uniform(0.3, 0.7))
+                    except Exception:
+                        pass
+
         return results[: req.max_results]

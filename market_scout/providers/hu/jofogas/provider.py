@@ -21,6 +21,7 @@ import httpx
 
 from market_scout.models import Listing
 from market_scout.providers.base import SearchRequest
+from market_scout.dates import normalise as normalise_date
 
 _SEARCH = "https://www.jofogas.hu/magyarorszag"
 
@@ -32,8 +33,9 @@ _RE_COMPANY = re.compile(r'"company_ad":(true|false)')
 _RE_REGION  = re.compile(r'"region":\{"label":"([^"]+)"')
 _RE_USER    = re.compile(r'"user_name":"((?:[^"\\]|\\.)*?)"')
 _RE_IMAGE   = re.compile(r'"images":\[\{"mime_type":"[^"]+","name":"[^"]+","extension_name":"[^"]+","url":"(https://img\.jofogas\.hu/thumbs/[^"]+)"')
+_RE_TIME    = re.compile(r'"list_time":\{"label":"[^"]*","value":"(\d+)"')
+_RE_BODY    = re.compile(r'"body":"((?:[^"\\]|\\.)*?)"')
 
-# Jofogas prices: "340 000 Ft", "5 500 Ft", "Ingyenes", etc.
 _RE_DIGITS  = re.compile(r'[\d\s]+')
 
 
@@ -42,7 +44,6 @@ def _parse_price(label: str) -> tuple[str, str]:
     label = label.strip()
     if not label or label.lower() in ("ingyenes", "0 ft"):
         return label, "HUF"
-    # "340 000 Ft" → "340000"
     m = _RE_DIGITS.match(label)
     if m:
         amount = m.group(0).replace(" ", "").replace("\xa0", "")
@@ -97,7 +98,7 @@ class JofogasProvider:
             print(f"[jofogas] Response size: {len(resp.text)} bytes", flush=True)
 
         html = resp.text
-        chunks = html.split('"list_id":')[1:]  # first element is before any listing
+        chunks = html.split('"list_id":')[1:]
 
         if req.debug:
             print(f"[jofogas] JSON chunks found: {len(chunks)}", flush=True)
@@ -112,6 +113,8 @@ class JofogasProvider:
             m_region  = _RE_REGION.search(chunk)
             m_user    = _RE_USER.search(chunk)
             m_image   = _RE_IMAGE.search(chunk)
+            m_time    = _RE_TIME.search(chunk)
+            m_body    = _RE_BODY.search(chunk)
 
             if not m_url or not m_subject or not m_price:
                 continue
@@ -127,13 +130,20 @@ class JofogasProvider:
             seen_urls.add(url)
 
             amount, currency = _parse_price(m_price.group(1))
-
             location = m_region.group(1) if m_region else ""
             try:
                 seller = json.loads(f'"{m_user.group(1)}"') if m_user else ""
             except (json.JSONDecodeError, ValueError):
                 seller = m_user.group(1) if m_user else ""
             image_url = m_image.group(1) if m_image else ""
+            raw_ts = m_time.group(1) if m_time else ""
+            posted = normalise_date(raw_ts)
+            try:
+                description = json.loads(f'"{m_body.group(1)}"') if m_body else ""
+            except (json.JSONDecodeError, ValueError):
+                description = m_body.group(1) if m_body else ""
+            # Strip HTML tags from description (jofogas uses <br /> in body)
+            description = re.sub(r'<[^>]+>', ' ', description).strip()
 
             results.append(Listing(
                 provider="jofogas",
@@ -144,10 +154,10 @@ class JofogasProvider:
                 location=location,
                 url=url,
                 image_url=image_url,
-                description="",
+                description=description,
                 seller=seller,
                 condition="",
-                posted="",
+                posted=posted,
             ))
 
         if req.debug:

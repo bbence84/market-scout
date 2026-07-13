@@ -25,6 +25,7 @@ from bs4 import BeautifulSoup
 
 from market_scout.models import Listing
 from market_scout.providers.base import SearchRequest
+from market_scout.dates import normalise as normalise_date
 
 _PAGE_SIZE = 20
 
@@ -135,7 +136,7 @@ def _parse_card(card, base_url: str, tld: str) -> Listing | None:
             text = date_span.get_text(strip=True)
             m = re.search(r"\[(\d{1,2}\.\d{1,2}\.\s*\d{4})\]", text)
             if m:
-                posted = m.group(1).replace(" ", "")
+                posted = normalise_date(m.group(1).replace(" ", ""))
 
         return Listing(
             provider=f"bazos_{tld}",

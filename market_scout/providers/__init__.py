@@ -13,6 +13,11 @@ from market_scout.providers.multi.olx.provider_pl import OlxPlProvider
 from market_scout.providers.multi.olx.provider_ro import OlxRoProvider
 from market_scout.providers.multi.olx.provider_pt import OlxPtProvider
 from market_scout.providers.multi.olx.provider_bg import OlxBgProvider
+from market_scout.providers.multi.wallapop.provider import WallapopProvider
+from market_scout.providers.at.willhaben.provider import WillhabenProvider
+from market_scout.providers.at.shpock.provider import ShpockProvider
+from market_scout.providers.fr.leboncoin.provider import LeboncoinProvider
+from market_scout.providers.it.subito.provider import SubitoProvider
 
 PROVIDERS: dict = {
     "facebook":      FacebookProvider(),
@@ -30,6 +35,11 @@ PROVIDERS: dict = {
     "olx_ro":        OlxRoProvider(),
     "olx_pt":        OlxPtProvider(),
     "olx_bg":        OlxBgProvider(),
+    "wallapop":      WallapopProvider(),
+    "willhaben":     WillhabenProvider(),
+    "shpock":        ShpockProvider(),
+    "leboncoin":     LeboncoinProvider(),
+    "subito":        SubitoProvider(),
 }
 
 

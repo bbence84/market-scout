@@ -16,6 +16,7 @@ class Listing:
     seller: str = ""
     condition: str = ""
     posted: str = ""
+    ai_match: str = ""   # LLM confidence: "YES — ...", "MAYBE — ...", "NO — ..."
     scraped_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self) -> dict:
@@ -32,5 +33,6 @@ class Listing:
             "seller": self.seller,
             "condition": self.condition,
             "posted": self.posted,
+            "ai_match": self.ai_match,
             "scraped_at": self.scraped_at,
         }

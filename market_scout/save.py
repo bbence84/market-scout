@@ -32,11 +32,11 @@ def _flag(country: str) -> str:
 
 
 def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%H%M%S")
+    return datetime.now().strftime("%H%M%S")
 
 
 def _output_path(fmt: str, ext: str) -> Path:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = datetime.now().strftime("%Y-%m-%d")
     day_dir = _OUTPUT_DIR / today
     day_dir.mkdir(parents=True, exist_ok=True)
     ts = _timestamp()
@@ -90,7 +90,7 @@ def save_csv(listings: Sequence[Listing], meta: dict) -> Path:
         fieldnames = [
             "no", "title", "price", "currency", "location", "provider",
             "provider_country", "seller", "condition", "posted", "url", "image_url",
-            "description", "scraped_at",
+            "description", "ai_match", "scraped_at",
         ]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -136,6 +136,8 @@ def save_txt(listings: Sequence[Listing], meta: dict) -> Path:
             # Wrap description at 68 chars
             desc = lst.description[:500].replace("\n", " ")
             lines.append(f"    Desc     : {desc}")
+        if lst.ai_match:
+            lines.append(f"    AI Match : {lst.ai_match}")
         lines.append("")
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -217,6 +219,42 @@ _HTML_TEMPLATE = """\
   .cond {{ font-size: 12px; color: #666; font-style: italic; }}
   a {{ color: #1a1a1a; text-decoration: underline; }}
   a:hover {{ color: #555; }}
+  /* Description tooltip */
+  .has-desc {{ position: relative; cursor: help; }}
+  .has-desc::after {{
+    content: attr(data-desc);
+    display: none;
+    position: absolute;
+    left: 0; top: 100%;
+    z-index: 99;
+    background: #1a1a1a;
+    color: #f5f0e8;
+    font-size: 11px;
+    font-family: "Courier New", Courier, monospace;
+    line-height: 1.5;
+    padding: 8px 10px;
+    border-radius: 3px;
+    width: 340px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    box-shadow: 2px 2px 8px rgba(0,0,0,.35);
+  }}
+  .has-desc:hover::after {{ display: block; }}
+  .desc-dot {{
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #888;
+    margin-left: 4px;
+    vertical-align: middle;
+    cursor: help;
+  }}
+  /* AI match badge */
+  .ai {{ font-size: 11px; font-weight: bold; white-space: nowrap; cursor: help; }}
+  .ai-yes {{ color: #2a7a2a; }}
+  .ai-maybe {{ color: #8a6a00; }}
+  .ai-no {{ color: #8a0000; }}
+  .ai-info {{ font-size: 10px; font-style: normal; opacity: 0.6; }}
   .img-thumb {{
     width: 56px; height: 42px;
     object-fit: cover;
@@ -254,6 +292,7 @@ _HTML_TEMPLATE = """\
   <th>Seller</th>
   <th>Cond.</th>
   <th>Posted</th>
+  <th>AI</th>
 </tr></thead>
 <tbody>
 {rows}
@@ -267,8 +306,27 @@ _TEMPLATE_END_SENTINEL = True  # marks end of template block
 
 
 def _esc(s: str) -> str:
-    """Minimal HTML escaping."""
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    """Escape for HTML content (between tags)."""
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace('"', "&quot;"))
+
+
+def _esc_attr(s: str) -> str:
+    """
+    Escape for HTML attribute values (used in data-* and title= attributes).
+    Handles all characters that break attribute parsing, including newlines,
+    tabs, quotes, angle brackets, and the full Unicode range.
+    """
+    return (s.replace("&", "&amp;")
+             .replace('"', "&quot;")
+             .replace("'", "&#39;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;")
+             .replace("\n", "&#10;")
+             .replace("\r", "&#13;")
+             .replace("\t", "&#9;"))
 
 
 def save_html(listings: Sequence[Listing], meta: dict) -> Path:
@@ -291,13 +349,56 @@ def save_html(listings: Sequence[Listing], meta: dict) -> Path:
         price_str = _esc(f"{lst.currency}{lst.price}" if lst.currency else lst.price)
         flag = _flag(lst.provider_country)
         img_cell = (
-            f'<img class="img-thumb" src="{_esc(lst.image_url)}" alt="" loading="lazy">'
+            f'<img class="img-thumb" src="{_esc_attr(lst.image_url)}" alt="" loading="lazy">'
             if lst.image_url else '<span class="no-img"></span>'
         )
-        title_cell = (
-            f'<a href="{_esc(lst.url)}">{_esc(lst.title or "—")}</a>'
-            if lst.url else _esc(lst.title or "—")
-        )
+
+        # Title cell: link with description tooltip when description exists
+        title_text = _esc(lst.title or "—")
+        if lst.description and lst.url:
+            # Truncate description for tooltip (browser/CSS attr() can handle long text)
+            desc_preview = _esc_attr(lst.description[:600])
+            title_cell = (
+                f'<span class="has-desc" data-desc="{desc_preview}">'
+                f'<a href="{_esc_attr(lst.url)}">{title_text}</a>'
+                f'<span class="desc-dot" title="Has description"></span>'
+                f'</span>'
+            )
+        elif lst.description:
+            desc_preview = _esc_attr(lst.description[:600])
+            title_cell = (
+                f'<span class="has-desc" data-desc="{desc_preview}">'
+                f'{title_text}'
+                f'<span class="desc-dot" title="Has description"></span>'
+                f'</span>'
+            )
+        elif lst.url:
+            title_cell = f'<a href="{_esc_attr(lst.url)}">{title_text}</a>'
+        else:
+            title_cell = title_text
+
+        # AI match cell — verdict as coloured text, full reason on hover
+        ai_raw = lst.ai_match or ""
+        if ai_raw:
+            upper = ai_raw.upper()
+            if upper.startswith("YES"):
+                verdict, cls = "YES", "ai-yes"
+            elif upper.startswith("NO"):
+                verdict, cls = "NO", "ai-no"
+            else:
+                verdict, cls = "MAYBE", "ai-maybe"
+            reason = ai_raw.split(" — ", 1)[1] if " — " in ai_raw else ""
+            if reason:
+                ai_cell = (
+                    f'<span class="ai {cls}" title="{_esc_attr(reason)}">'
+                    f'{verdict} <span class="ai-info">ⓘ</span>'
+                    f'</span>'
+                )
+            else:
+                ai_cell = f'<span class="ai {cls}">{verdict}</span>'
+        else:
+            ai_cell = '<span style="color:#bbb">—</span>'
+
         rows_html.append(
             f"<tr>"
             f'<td class="num">{i}</td>'
@@ -309,6 +410,7 @@ def save_html(listings: Sequence[Listing], meta: dict) -> Path:
             f"<td>{_esc(lst.seller or '—')}</td>"
             f'<td class="cond">{_esc(lst.condition or "—")}</td>'
             f"<td>{_esc(lst.posted or '—')}</td>"
+            f"<td>{ai_cell}</td>"
             f"</tr>"
         )
 

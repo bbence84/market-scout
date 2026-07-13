@@ -22,7 +22,7 @@ from market_scout.providers.worldwide.facebook.location_db import (
     list_cities,
     resolve_locations,
 )
-from market_scout.output import print_table, print_json
+from market_scout.output import print_table
 from market_scout.save import save as save_results
 
 app = typer.Typer(
@@ -39,11 +39,6 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
 
 console = Console(stderr=True, highlight=False)
 out = Console(highlight=False)
-
-
-class OutputFormat(str, Enum):
-    table = "table"
-    json = "json"
 
 
 def _load_cfg() -> dict:
@@ -201,7 +196,20 @@ def search(
     ),
     scrape_details: bool = typer.Option(
         False, "--details/--no-details",
-        help="[Facebook only] Open each listing's detail page for full description, seller, and condition.",
+        help=(
+            "Open each listing's detail page to collect the full description. "
+            "Slower — one extra HTTP request or browser tab per listing. "
+            "Required for --details-ai."
+        ),
+    ),
+    details_ai: Optional[str] = typer.Option(
+        None, "--details-ai",
+        help=(
+            "After fetching descriptions (implies --details), ask the LLM whether each listing "
+            "matches your free-text question. Adds a YES/MAYBE/NO confidence column to the output. "
+            "Requires OpenRouter API key. "
+            "Example: --details-ai \"Is it really an Amiga 500 in good condition?\""
+        ),
     ),
     radius_km: Optional[int] = typer.Option(
         None, "--radius",
@@ -240,7 +248,6 @@ def search(
             "Requires OpenRouter API key in config.toml."
         ),
     ),
-    output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o", help="Output format: table (default) or json"),
     save_format: Optional[str] = typer.Option(
         None, "--save",
         help=(
@@ -273,7 +280,6 @@ def search(
         p = Path(cfg["cookies"]).expanduser()
         if p.exists():
             effective_cookies = p
-    effective_output = output.value if output != OutputFormat.table else cfg.get("output", "table")
 
     # --- Resolve providers ---
     provider_names = resolve_providers([p.strip() for p in effective_providers.split(",") if p.strip()])
@@ -314,11 +320,15 @@ def search(
     else:
         effective_translate_results = None
 
+    # --details-ai implies --details
+    if details_ai:
+        scrape_details = True
+
     # Guard: abort early if an explicit LLM feature is requested but no key is configured
-    if (suggest_queries or translate_to or (translate_results and not llm_key)) and not llm_key:
+    if (suggest_queries or translate_to or details_ai or (translate_results and not llm_key)) and not llm_key:
         console.print(
             "\n[red]OpenRouter API key required[/red] for LLM features "
-            "(--suggest-queries, --translate-to, --translate-results).\n"
+            "(--suggest-queries, --translate-to, --translate-results, --details-ai).\n"
             "\n"
             "Set it with one of:\n"
             "  [bold]market-scout config --set openrouter.api_key=sk-or-v1-your-key[/bold]\n"
@@ -393,7 +403,23 @@ def search(
                 )
                 loc_note = f"| locations: {loc_summary} | {len(pairs)} city search(es)"
             else:
-                loc_note = "[dim](location ignored — nationwide)[/dim]"
+                prov_countries = getattr(prov, "countries", [])
+                has_geo = location_tokens and any(
+                    t.upper() in prov_countries for t in location_tokens
+                )
+                # Warn only for multi-country providers (like Wallapop) where location
+                # determines which country's pool is searched. Single-country providers
+                # (like willhaben=AT) are nationwide by definition — no warning needed.
+                is_multi_country = len(prov_countries) > 1 and "*" not in prov_countries
+                if has_geo:
+                    loc_note = f"[dim](geo-filtered: {', '.join(t for t in location_tokens if t.upper() in prov_countries)})[/dim]"
+                elif is_multi_country and not has_geo:
+                    loc_note = (
+                        f"[yellow]⚠ no location specified[/yellow] "
+                        f"[dim]— pass --location {'/'.join(prov_countries[:3])} for results[/dim]"
+                    )
+                else:
+                    loc_note = "[dim](location ignored — nationwide)[/dim]"
             console.print(
                 f"[cyan]Searching[/cyan] [bold]{pname}[/bold] for {display_q} "
                 + loc_note
@@ -416,44 +442,122 @@ def search(
                 provider_times[pname] = provider_times.get(pname, 0.0)
                 console.print(f"[red]Error from {pname}:[/red] {exc}")
 
+    # --- Normalise posted dates ---
+    # Programmatic normalisation runs for all listings (free, fast).
+    # LLM fallback only fires for listings whose date couldn't be parsed
+    # programmatically (e.g. Facebook relative strings like "25 weeks ago").
+    from market_scout.dates import normalise as normalise_date
+    has_unparsed = False
+    for lst in all_listings:
+        if lst.posted:
+            normalised = normalise_date(lst.posted)
+            if normalised:
+                lst.posted = normalised
+            else:
+                has_unparsed = True  # raw string left; may need LLM
+
+    if has_unparsed and llm_key:
+        # Collect unique unparsed values, translate in one batch
+        unique_raw = list({lst.posted for lst in all_listings
+                           if lst.posted and not lst.posted.startswith("20")})
+        if unique_raw:
+            from market_scout.dates import _llm_parse
+            resolved: dict[str, str] = {}
+            for raw in unique_raw:
+                parsed = _llm_parse(raw, llm_model, llm_key, llm_base)
+                if parsed:
+                    resolved[raw] = parsed
+            if resolved:
+                for lst in all_listings:
+                    if lst.posted in resolved:
+                        lst.posted = resolved[lst.posted]
+
     # --- Translate results ---
     if effective_translate_results and all_listings:
         from market_scout.llm import translate_listings, _BATCH_SIZE
+
+        # Country codes whose native language matches common user_lang values.
+        # Listings from these countries are skipped when user_lang matches.
+        _COUNTRY_LANG: dict[str, str] = {
+            "DE": "de", "AT": "de", "CH": "de",
+            "HU": "hu",
+            "PL": "pl",
+            "CZ": "cs",
+            "SK": "sk",
+            "RO": "ro",
+            "PT": "pt",
+            "BG": "bg",
+            "UA": "uk",
+            "GB": "en", "US": "en", "AU": "en",
+            "FR": "fr",
+            "ES": "es",
+            "IT": "it",
+            "NL": "nl",
+        }
+        target_lang = effective_translate_results.lower().strip()
+
+        # Identify which listings actually need translation
+        needs_translation = [
+            lst for lst in all_listings
+            if _COUNTRY_LANG.get(lst.provider_country.upper(), "").lower() != target_lang
+        ]
+        skip_count = len(all_listings) - len(needs_translation)
+
         source = "auto" if not translate_results and not no_translate else ("--translate-results" if translate_results else "config")
-        n = len(all_listings)
-        batches = (n + _BATCH_SIZE - 1) // _BATCH_SIZE
-        console.print(
-            f"[cyan]Translating {n} result(s) → {effective_translate_results}[/cyan] "
-            f"[dim]({batches} batch(es) of ≤{_BATCH_SIZE}) (user_lang from {source})[/dim]"
-        )
+        n = len(needs_translation)
+        if n == 0:
+            console.print(
+                f"[dim]Skipping translation — all results are already in {effective_translate_results}[/dim]"
+            )
+        else:
+            batches = (n + _BATCH_SIZE - 1) // _BATCH_SIZE
+            console.print(
+                f"[cyan]Translating {n} result(s) → {effective_translate_results}[/cyan] "
+                f"[dim]({batches} batch(es) of ≤{_BATCH_SIZE}, {skip_count} skipped — already {effective_translate_results}) (user_lang from {source})[/dim]"
+            )
         try:
-            # Translate titles
-            titles = [lst.title for lst in all_listings]
-            translated_titles = translate_listings(titles, effective_translate_results, llm_model, llm_key, llm_base)
-            for lst, new_title in zip(all_listings, translated_titles):
-                if new_title and new_title != lst.title:
-                    lst.title = f"{new_title} [{lst.title}]"
+            if n > 0:
+                # Translate titles — only for listings that need it
+                titles_to_translate = [lst.title for lst in needs_translation]
+                translated_titles = translate_listings(titles_to_translate, effective_translate_results, llm_model, llm_key, llm_base)
+                for lst, new_title in zip(needs_translation, translated_titles):
+                    if new_title and new_title != lst.title:
+                        lst.title = f"{new_title} [{lst.title}]"
 
-            # Translate conditions (short strings — deduplicate to save API calls)
-            unique_conditions = list({lst.condition for lst in all_listings if lst.condition})
-            if unique_conditions:
-                translated_conditions = translate_listings(
-                    unique_conditions, effective_translate_results, llm_model, llm_key, llm_base
-                )
-                cond_map = dict(zip(unique_conditions, translated_conditions))
-                for lst in all_listings:
-                    if lst.condition and lst.condition in cond_map:
-                        lst.condition = cond_map[lst.condition]
+                # Translate conditions — only from listings that need translation
+                unique_conditions = list({lst.condition for lst in needs_translation if lst.condition})
+                if unique_conditions:
+                    translated_conditions = translate_listings(
+                        unique_conditions, effective_translate_results, llm_model, llm_key, llm_base
+                    )
+                    cond_map = dict(zip(unique_conditions, translated_conditions))
+                    for lst in needs_translation:
+                        if lst.condition and lst.condition in cond_map:
+                            lst.condition = cond_map[lst.condition]
 
-            console.print(f"[green]✓[/green] Translated to {effective_translate_results}")
+                console.print(f"[green]✓[/green] Translated to {effective_translate_results}")
         except Exception as exc:
             console.print(f"[red]Result translation failed:[/red] {exc}")
 
+    # --- AI confidence scoring (--details-ai) ---
+    if details_ai and all_listings and llm_key:
+        from market_scout.llm import analyse_listing
+        to_analyse = [(i, lst) for i, lst in enumerate(all_listings) if lst.description]
+        no_desc = len(all_listings) - len(to_analyse)
+        console.print(
+            f"[cyan]Analysing {len(to_analyse)} listing(s)[/cyan] against: [bold]{details_ai!r}[/bold]"
+            + (f" [dim]({no_desc} skipped — no description)[/dim]" if no_desc else "")
+        )
+        for i, lst in to_analyse:
+            lst.ai_match = analyse_listing(lst.description, details_ai, llm_model, llm_key, llm_base, search_query=query, title=lst.title, user_lang=user_lang or "en")
+        if no_desc:
+            for lst in all_listings:
+                if not lst.description and not lst.ai_match:
+                    lst.ai_match = "MAYBE — no description available"
+        console.print(f"[green]✓[/green] AI scoring complete")
+
     # --- Always print to console ---
-    if effective_output == "json":
-        print_json(all_listings)
-    else:
-        print_table(all_listings)
+    print_table(all_listings)
 
     # --- Timing summary ---
     total_elapsed = time.perf_counter() - total_start

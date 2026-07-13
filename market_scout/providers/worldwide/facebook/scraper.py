@@ -465,6 +465,7 @@ async def scrape_detail(page: Page, url: str) -> dict:
         for sel, attr, key in [
             ('meta[property="og:title"]', "content", "title"),
             ('meta[property="og:price:amount"]', "content", "price"),
+            ('meta[property="og:description"]', "content", "description"),
         ]:
             el = await page.query_selector(sel)
             if el:

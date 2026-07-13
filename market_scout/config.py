@@ -23,7 +23,6 @@ _DEFAULTS: dict[str, Any] = {
     "location": "",            # empty = auto-detect (FB) / nationwide (others)
     "radius": 0,
     "max_results": 30,
-    "output": "table",
     "headless": True,
     "cookies": "",             # path to FB cookies file
     "user_lang": "en",         # language for result translation
@@ -55,9 +54,6 @@ radius = 0
 
 # Default max results per provider/city.
 max_results = 30
-
-# Default output format: "table" or "json".
-output = "table"
 
 # Run Facebook browser headlessly by default.
 headless = true

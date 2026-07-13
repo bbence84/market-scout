@@ -18,6 +18,7 @@ from playwright.async_api import async_playwright
 
 from market_scout.models import Listing
 from market_scout.providers.base import SearchRequest
+from market_scout.dates import normalise as normalise_date
 
 _BASE = "https://hardverapro.hu"
 _SEARCH = f"{_BASE}/aprok/keres.php"
@@ -64,7 +65,8 @@ def _parse_listing(li) -> Listing | None:
                 image_url = "https:" + image_url
 
         time_el = li.select_one(".uad-col-info .uad-time time")
-        posted = time_el.get_text(strip=True) if time_el else ""
+        raw_posted = time_el.get_text(strip=True) if time_el else ""
+        posted = normalise_date(raw_posted)
 
         return Listing(
             provider="hardverapro",
@@ -218,6 +220,25 @@ async def _run_search(req: SearchRequest) -> list[Listing]:
                 break
 
             offset += _PAGE_SIZE
+
+        # Step 3: if --details requested, fetch each listing page for description
+        if req.scrape_details and results:
+            if req.debug:
+                print(f"[hardverapro] Fetching detail pages for {len(results)} listing(s)...", flush=True)
+            for lst in results:
+                if not lst.url:
+                    continue
+                try:
+                    await page.goto(lst.url, wait_until="domcontentloaded", timeout=20_000)
+                    await asyncio.sleep(random.uniform(0.3, 0.7))
+                    detail_html = await page.content()
+                    detail_soup = BeautifulSoup(detail_html, "lxml")
+                    # Primary: div.popisdetail (RIOS network standard)
+                    desc_el = detail_soup.select_one("div.popisdetail") or detail_soup.select_one("div.popis")
+                    if desc_el:
+                        lst.description = desc_el.get_text(" ", strip=True)[:2000]
+                except Exception:
+                    pass
 
         await browser.close()
 
