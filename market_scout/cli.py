@@ -177,8 +177,17 @@ def search(
             "Run 'market-scout locations' to browse all country codes and city slugs."
         ),
     ),
-    min_price: Optional[int] = typer.Option(None, "--min-price", help="Minimum price filter (all providers)"),
-    max_price: Optional[int] = typer.Option(None, "--max-price", help="Maximum price filter (all providers)"),
+    min_price: Optional[int] = typer.Option(None, "--min-price", help="Minimum price filter. If --currency is set, specify in that currency; otherwise in the provider's native currency."),
+    max_price: Optional[int] = typer.Option(None, "--max-price", help="Maximum price filter. If --currency is set, specify in that currency; otherwise in the provider's native currency."),
+    currency: Optional[str] = typer.Option(
+        None, "--currency",
+        help=(
+            "Display all prices in this currency and convert price filters accordingly. "
+            "Example: EUR, USD, GBP. Converted prices show a ≈ prefix. "
+            "Original price is shown in the HTML tooltip. "
+            "Requires network access to fetch exchange rates (Frankfurter/ECB + open.er-api.com for UAH/BGN)."
+        ),
+    ),
     max_results: Optional[int] = typer.Option(
         None, "--max-results", "-n",
         help="Max listings to collect per city search (Facebook) or per page-run (other providers). Defaults to config value (30).",
@@ -346,7 +355,7 @@ def search(
         console.print(f"[cyan]Asking LLM for alternative search terms...[/cyan]")
         try:
             from market_scout.llm import suggest_queries as llm_suggest
-            suggestions = llm_suggest(query, llm_model, llm_key, llm_base)
+            suggestions = llm_suggest(query, llm_model, llm_key, llm_base, details_ai=details_ai or "")
             queries = _approve_suggestions(query, suggestions)
             console.print(f"[green]Using {len(queries)} search term(s):[/green] {', '.join(repr(q) for q in queries)}")
         except Exception as exc:
@@ -376,6 +385,15 @@ def search(
     provider_times: dict[str, float] = {}  # pname → total seconds
     total_start = time.perf_counter()
 
+    # --- Currency setup ---
+    target_currency = (currency or "").strip().upper()
+    if target_currency:
+        from market_scout.currency import supported as currency_supported, convert_price_filter
+        if not currency_supported(target_currency):
+            console.print(f"[red]Unknown or unsupported currency: {target_currency!r}[/red]")
+            console.print("[dim]Rates are fetched from Frankfurter (ECB) and open.er-api.com.[/dim]")
+            raise typer.Exit(code=1)
+
     for original_q in queries:
         effective_q = translated_queries.get(original_q, original_q)
         display_q = f"{original_q!r} [dim]({effective_q})[/dim]" if effective_q != original_q else repr(original_q)
@@ -391,6 +409,7 @@ def search(
             scrape_details=scrape_details,
             radius_km=effective_radius,
             debug=debug,
+            target_currency=target_currency,
         )
 
         for pname in provider_names:
@@ -556,8 +575,30 @@ def search(
                     lst.ai_match = "MAYBE — no description available"
         console.print(f"[green]✓[/green] AI scoring complete")
 
+    # --- Currency conversion ---
+    # original_prices: {url -> (original_price_str, original_currency)}
+    original_prices: dict[str, tuple[str, str]] = {}
+    if target_currency and all_listings:
+        from market_scout.currency import parse_price, convert
+        converted_count = 0
+        for lst in all_listings:
+            if lst.currency.upper() == target_currency or lst.currency == "":
+                continue  # already in target, or unknown/non-numeric currency
+            amount = parse_price(lst.price)
+            if amount is None:
+                continue  # non-numeric price — skip
+            result = convert(amount, lst.currency, target_currency)
+            if result is None:
+                continue  # unknown exchange rate — skip
+            original_prices[lst.url] = (lst.price, lst.currency)
+            lst.price = str(int(round(result))) if result == int(result) else f"{result:.2f}"
+            lst.currency = target_currency
+            converted_count += 1
+        if converted_count:
+            console.print(f"[dim]≈ {converted_count} price(s) converted to {target_currency}[/dim]")
+
     # --- Always print to console ---
-    print_table(all_listings)
+    print_table(all_listings, original_prices=original_prices)
 
     # --- Timing summary ---
     total_elapsed = time.perf_counter() - total_start
@@ -583,10 +624,11 @@ def search(
             "result_count": len(all_listings),
             "run_at": run_at,
             "translate_to": effective_translate_results,
+            "target_currency": target_currency,
         }
         for fmt in [f.strip() for f in save_format.split(",") if f.strip()]:
             try:
-                path = save_results(fmt, all_listings, meta)
+                path = save_results(fmt, all_listings, meta, original_prices=original_prices)
                 if path:
                     console.print(f"[green]✓[/green] Saved {fmt.upper()} → [bold]{path}[/bold]")
                 else:

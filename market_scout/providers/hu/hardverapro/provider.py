@@ -233,10 +233,16 @@ async def _run_search(req: SearchRequest) -> list[Listing]:
                     await asyncio.sleep(random.uniform(0.3, 0.7))
                     detail_html = await page.content()
                     detail_soup = BeautifulSoup(detail_html, "lxml")
-                    # Primary: div.popisdetail (RIOS network standard)
-                    desc_el = detail_soup.select_one("div.popisdetail") or detail_soup.select_one("div.popis")
+                    # Description is in div.rtif-content (inside div.uad-content)
+                    # All p tags with mgt* classes contain the listing body text
+                    desc_el = detail_soup.select_one("div.rtif-content")
                     if desc_el:
-                        lst.description = desc_el.get_text(" ", strip=True)[:2000]
+                        # Join all paragraph text, skip empty ones
+                        parts = [p.get_text(" ", strip=True) for p in desc_el.select("p") if p.get_text(strip=True)]
+                        if parts:
+                            lst.description = " ".join(parts)[:2000]
+                        else:
+                            lst.description = desc_el.get_text(" ", strip=True)[:2000]
                 except Exception:
                     pass
 

@@ -93,11 +93,18 @@ def suggest_queries(
     model: str,
     api_key: str,
     base_url: str,
+    details_ai: str = "",
 ) -> list[str]:
     """
     Suggest alternative search terms for a marketplace query.
+    If details_ai is provided, suggestions are tuned to match that intent.
     Returns a list of variants including the original.
     """
+    intent_hint = (
+        f" The buyer's intent is: \"{details_ai}\". "
+        "Prioritise variants that are likely to find listings matching that intent."
+        if details_ai else ""
+    )
     messages = [
         {
             "role": "system",
@@ -105,7 +112,7 @@ def suggest_queries(
                 "You are a marketplace search expert. "
                 "Given a search query for a second-hand item, suggest up to 5 alternative search terms "
                 "that sellers commonly use when listing this item — including abbreviations, common misspellings, "
-                "regional names, and related model names. "
+                f"regional names, and related model names.{intent_hint} "
                 "Rules: "
                 "- Always include the original query as the first item. "
                 "- Return a JSON array of strings only — no explanation, no markdown. "

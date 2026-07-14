@@ -368,13 +368,20 @@ async def init_stealth(page: Page, fp):
         await s.apply_stealth_async(page)
     except Exception:
         pass
-    await page.add_init_script("""
-        Object.defineProperty(navigator,'webdriver',{get:()=>undefined});
-        Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});
-        window.chrome={runtime:{},loadTimes:function(){},csi:function(){}};
+    # Match navigator.languages to the locale set on the context
+    lang_str = fp.navigator.language or "en-US"
+    lang_base = lang_str.split("-")[0]
+    await page.add_init_script(f"""
+        Object.defineProperty(navigator,'webdriver',{{get:()=>undefined}});
+        Object.defineProperty(navigator,'plugins',{{get:()=>[1,2,3,4,5]}});
+        Object.defineProperty(navigator,'languages',{{get:()=>['{lang_str}','{lang_base}']}});
+        window.chrome={{runtime:{{}},loadTimes:function(){{}},csi:function(){{}}}};
         const _q=navigator.permissions.query;
         navigator.permissions.query=p=>p.name==='notifications'?
-            Promise.resolve({state:Notification.permission}):_q(p);
+            Promise.resolve({{state:Notification.permission}}):_q(p);
+        // Make screen.availWidth/availHeight match viewport (not full physical screen)
+        Object.defineProperty(screen,'availWidth',{{get:()=>window.innerWidth||screen.width}});
+        Object.defineProperty(screen,'availHeight',{{get:()=>window.innerHeight||screen.height}});
     """)
 
 
@@ -406,6 +413,22 @@ async def _make_context(p, cfg: FbScraperConfig):
     cks = load_cookies(cfg.cookies_file)
     if cks:
         await ctx.add_cookies(cks)
+
+    # Block analytics/telemetry that can expose automation behaviour.
+    # No impact on listing data; these are pure tracking pixels/events.
+    async def _block_telemetry(route):
+        url = route.request.url
+        if any(x in url for x in (
+            "facebook.com/tr",            # FB pixel
+            "fbevents.js",
+            "connect.facebook.net/signals",
+            "/logging/",
+        )):
+            await route.abort()
+        else:
+            await route.continue_()
+
+    await ctx.route("**/*", _block_telemetry)
     return ctx, fp
 
 
@@ -484,6 +507,60 @@ async def scrape_detail(page: Page, url: str) -> dict:
 
         full = await page.evaluate("() => document.body.innerText")
         lines = [ln.strip() for ln in full.splitlines() if ln.strip()]
+
+        # Extract description via DOM TreeWalker — most reliable approach.
+        # Walk text nodes after the "Condition" label, skipping script/style nodes.
+        if not d.get("description"):
+            desc = await page.evaluate("""
+                () => {
+                    const SKIP_TAGS = new Set(['SCRIPT','STYLE','NOSCRIPT','TEMPLATE']);
+                    const walker = document.createTreeWalker(
+                        document.body, NodeFilter.SHOW_TEXT
+                    );
+                    let node;
+                    let foundCondition = false;
+                    while (node = walker.nextNode()) {
+                        const parent = node.parentElement;
+                        if (!parent || SKIP_TAGS.has(parent.tagName)) continue;
+                        const text = node.textContent.trim();
+                        if (text === 'Condition') { foundCondition = true; continue; }
+                        if (foundCondition && text.length > 80) {
+                            const tl = text.toLowerCase();
+                            if (!tl.includes('consumer') &&
+                                !tl.includes('purchasing') &&
+                                !tl.includes('intermediary') &&
+                                !tl.includes('buy and sell') &&
+                                !tl.includes('marketplace safety')) {
+                                return text.substring(0, 2000);
+                            }
+                        }
+                    }
+                    // Fallback: first visible text node > 150 chars
+                    const walker2 = document.createTreeWalker(
+                        document.body, NodeFilter.SHOW_TEXT
+                    );
+                    while (node = walker2.nextNode()) {
+                        const parent = node.parentElement;
+                        if (!parent || SKIP_TAGS.has(parent.tagName)) continue;
+                        const text = node.textContent.trim();
+                        const tl = text.toLowerCase();
+                        if (text.length > 150 &&
+                            !tl.startsWith('listed') &&
+                            !tl.includes('seller information') &&
+                            !tl.includes('buy and sell') &&
+                            !tl.includes('consumer') &&
+                            !tl.includes('purchasing') &&
+                            !tl.includes('intermediary') &&
+                            !tl.includes('marketplace safety')) {
+                            return text.substring(0, 2000);
+                        }
+                    }
+                    return null;
+                }
+            """)
+            if desc:
+                d["description"] = desc.strip()
+
         for i in range(len(lines) - 1):
             key_line = lines[i]
             val = lines[i + 1]

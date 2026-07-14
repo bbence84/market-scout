@@ -329,7 +329,8 @@ def _esc_attr(s: str) -> str:
              .replace("\t", "&#9;"))
 
 
-def save_html(listings: Sequence[Listing], meta: dict) -> Path:
+def save_html(listings: Sequence[Listing], meta: dict,
+              original_prices: dict | None = None) -> Path:
     path = _output_path("html", "html")
 
     meta_parts = [f'<span>Query: {_esc(meta.get("query", ""))}</span>']
@@ -340,13 +341,24 @@ def save_html(listings: Sequence[Listing], meta: dict) -> Path:
     if meta.get("min_price") or meta.get("max_price"):
         lo, hi = meta.get("min_price", ""), meta.get("max_price", "")
         meta_parts.append(f'<span>Price: {lo} &ndash; {hi}</span>')
+    if meta.get("target_currency"):
+        meta_parts.append(f'<span>Currency: {_esc(meta["target_currency"])} (≈ converted)</span>')
     meta_parts.append(f'<span>Results: {meta.get("result_count", 0)}</span>')
     meta_parts.append(f'<span>Run at: {_esc(meta.get("run_at", ""))}</span>')
     meta_html = "\n".join(meta_parts)
 
+    op = original_prices or {}
     rows_html: list[str] = []
     for i, lst in enumerate(listings, 1):
-        price_str = _esc(f"{lst.currency}{lst.price}" if lst.currency else lst.price)
+        # Price cell — show ≈ prefix if converted; tooltip shows original
+        raw_price = f"{lst.currency}{lst.price}" if lst.currency else lst.price
+        if lst.url in op:
+            orig_price, orig_currency = op[lst.url]
+            orig_display = f"{orig_currency}{orig_price}" if orig_currency else orig_price
+            tooltip = _esc_attr(f"Original: {orig_display}")
+            price_cell = f'<span title="{tooltip}">≈{_esc(raw_price)}</span>'
+        else:
+            price_cell = _esc(raw_price) or "—"
         flag = _flag(lst.provider_country)
         img_cell = (
             f'<img class="img-thumb" src="{_esc_attr(lst.image_url)}" alt="" loading="lazy">'
@@ -404,7 +416,7 @@ def save_html(listings: Sequence[Listing], meta: dict) -> Path:
             f'<td class="num">{i}</td>'
             f"<td>{img_cell}</td>"
             f'<td class="title">{title_cell}</td>'
-            f'<td class="price">{price_str or "—"}</td>'
+            f'<td class="price">{price_cell}</td>'
             f"<td>{_esc(lst.location or '—')}</td>"
             f'<td class="provider">{_esc(lst.provider)} {flag}</td>'
             f"<td>{_esc(lst.seller or '—')}</td>"
@@ -432,13 +444,16 @@ def save(
     format_name: str,
     listings: Sequence[Listing],
     meta: dict,
+    original_prices: dict | None = None,
 ) -> Path | None:
     """
     Save listings to a timestamped file in ./output/.
     format_name: one of "json", "csv", "txt", "html"
+    original_prices: {url -> (original_price_str, original_currency)} for converted prices
     Returns the Path written, or None if format_name is unknown.
     """
     fmt = format_name.lower().strip()
+    op = original_prices or {}
     if fmt == "json":
         return save_json(listings, meta)
     elif fmt == "csv":
@@ -446,5 +461,5 @@ def save(
     elif fmt == "txt":
         return save_txt(listings, meta)
     elif fmt in ("html", "web"):
-        return save_html(listings, meta)
+        return save_html(listings, meta, original_prices=op)
     return None

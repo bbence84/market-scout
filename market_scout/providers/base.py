@@ -19,6 +19,7 @@ class SearchRequest:
     scrape_details: bool = False
     radius_km: int = 0
     debug: bool = False
+    target_currency: str = ""  # e.g. "EUR" — empty means no conversion
 
 
 @runtime_checkable
