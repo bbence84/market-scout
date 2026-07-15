@@ -80,7 +80,7 @@ api_key = ""
 
 # Model to use for query translation and suggestions.
 # Default is claude-haiku-4-5 (fast, cheap). Other options:
-#   "openai/gpt-4o-mini", "google/gemini-flash-1.5", "mistralai/mistral-small"
+#   "openai/gpt-5-mini", "google/gemini-2.5-flash-lite", "mistralai/mistral-small"
 model = "anthropic/claude-haiku-4-5"
 
 # OpenRouter API base URL (usually no need to change).
