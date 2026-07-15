@@ -2,277 +2,858 @@
   "AT": {
     "name": "Austria",
     "cities": [
-      {"slug": "vienna",     "radius_km": 120, "name": "Vienna"},
-      {"slug": "graz",       "radius_km": 80,  "name": "Graz"},
-      {"slug": "salzburg",   "radius_km": 80,  "name": "Salzburg"},
-      {"slug": "innsbruck",  "radius_km": 80,  "name": "Innsbruck"},
-      {"slug": "linz",       "radius_km": 80,  "name": "Linz"}
+      {
+        "slug": "vienna",
+        "radius_km": 120,
+        "name": "Vienna",
+        "fb_id": "100232032143091"
+      },
+      {
+        "slug": "graz",
+        "radius_km": 80,
+        "name": "Graz",
+        "fb_id": "109859345710059"
+      },
+      {
+        "slug": "salzburg",
+        "radius_km": 80,
+        "name": "Salzburg",
+        "fb_id": "102189213155511"
+      },
+      {
+        "slug": "innsbruck",
+        "radius_km": 80,
+        "name": "Innsbruck",
+        "fb_id": "114596688557481"
+      },
+      {
+        "slug": "linz",
+        "radius_km": 80,
+        "name": "Linz",
+        "fb_id": "106242929412108"
+      }
     ]
   },
   "BE": {
     "name": "Belgium",
     "cities": [
-      {"slug": "brussels",   "radius_km": 80,  "name": "Brussels"},
-      {"slug": "antwerp",    "radius_km": 60,  "name": "Antwerp"},
-      {"slug": "ghent",      "radius_km": 60,  "name": "Ghent"},
-      {"slug": "liege",      "radius_km": 60,  "name": "Liège"}
+      {
+        "slug": "brussels",
+        "radius_km": 80,
+        "name": "Brussels"
+      },
+      {
+        "slug": "antwerp",
+        "radius_km": 60,
+        "name": "Antwerp",
+        "fb_id": "109309222429380"
+      },
+      {
+        "slug": "ghent",
+        "radius_km": 60,
+        "name": "Ghent",
+        "fb_id": "102155463159279"
+      },
+      {
+        "slug": "liege",
+        "radius_km": 60,
+        "name": "Liège",
+        "fb_id": "112149285470803"
+      }
     ]
   },
   "BG": {
     "name": "Bulgaria",
     "cities": [
-      {"slug": "sofia",      "radius_km": 150, "name": "Sofia"},
-      {"slug": "plovdiv",    "radius_km": 100, "name": "Plovdiv"},
-      {"slug": "varna",      "radius_km": 100, "name": "Varna"}
+      {
+        "slug": "sofia",
+        "radius_km": 150,
+        "name": "Sofia"
+      },
+      {
+        "slug": "plovdiv",
+        "radius_km": 100,
+        "name": "Plovdiv",
+        "fb_id": "110234925673168"
+      },
+      {
+        "slug": "varna",
+        "radius_km": 100,
+        "name": "Varna",
+        "fb_id": "114974968516694"
+      }
     ]
   },
   "CH": {
     "name": "Switzerland",
     "cities": [
-      {"slug": "zurich",     "radius_km": 80,  "name": "Zürich"},
-      {"slug": "geneva",     "radius_km": 80,  "name": "Geneva"},
-      {"slug": "bern",       "radius_km": 60,  "name": "Bern"},
-      {"slug": "basel",      "radius_km": 60,  "name": "Basel"}
+      {
+        "slug": "zurich",
+        "radius_km": 80,
+        "name": "Zürich"
+      },
+      {
+        "slug": "geneva",
+        "radius_km": 80,
+        "name": "Geneva",
+        "fb_id": "110868505604715"
+      },
+      {
+        "slug": "bern",
+        "radius_km": 60,
+        "name": "Bern",
+        "fb_id": "108108499217446"
+      },
+      {
+        "slug": "basel",
+        "radius_km": 60,
+        "name": "Basel",
+        "fb_id": "108671032497097"
+      }
     ]
   },
   "CZ": {
     "name": "Czech Republic",
     "cities": [
-      {"slug": "prague",     "radius_km": 150, "name": "Prague"},
-      {"slug": "brno",       "radius_km": 100, "name": "Brno"},
-      {"slug": "ostrava",    "radius_km": 80,  "name": "Ostrava"}
+      {
+        "slug": "prague",
+        "radius_km": 150,
+        "name": "Prague"
+      },
+      {
+        "slug": "brno",
+        "radius_km": 100,
+        "name": "Brno",
+        "fb_id": "107645375935528"
+      },
+      {
+        "slug": "ostrava",
+        "radius_km": 80,
+        "name": "Ostrava",
+        "fb_id": "115991601744422"
+      }
     ]
   },
   "DE": {
     "name": "Germany",
     "cities": [
-      {"slug": "berlin",     "radius_km": 150, "name": "Berlin"},
-      {"slug": "hamburg",    "radius_km": 120, "name": "Hamburg"},
-      {"slug": "munich",     "radius_km": 120, "name": "Munich"},
-      {"slug": "cologne",    "radius_km": 100, "name": "Cologne"},
-      {"slug": "frankfurt",  "radius_km": 100, "name": "Frankfurt"},
-      {"slug": "stuttgart",  "radius_km": 100, "name": "Stuttgart"},
-      {"slug": "dresden",    "radius_km": 100, "name": "Dresden"},
-      {"slug": "hannover",   "radius_km": 100, "name": "Hannover"}
+      {
+        "slug": "berlin",
+        "radius_km": 150,
+        "name": "Berlin"
+      },
+      {
+        "slug": "hamburg",
+        "radius_km": 120,
+        "name": "Hamburg"
+      },
+      {
+        "slug": "munich",
+        "radius_km": 120,
+        "name": "Munich"
+      },
+      {
+        "slug": "cologne",
+        "radius_km": 100,
+        "name": "Cologne"
+      },
+      {
+        "slug": "frankfurt",
+        "radius_km": 100,
+        "name": "Frankfurt"
+      },
+      {
+        "slug": "stuttgart",
+        "radius_km": 100,
+        "name": "Stuttgart"
+      },
+      {
+        "slug": "dresden",
+        "radius_km": 100,
+        "name": "Dresden",
+        "fb_id": "106661926035646"
+      },
+      {
+        "slug": "hannover",
+        "radius_km": 100,
+        "name": "Hannover",
+        "fb_id": "110081962354501"
+      }
     ]
   },
   "DK": {
     "name": "Denmark",
     "cities": [
-      {"slug": "copenhagen", "radius_km": 120, "name": "Copenhagen"},
-      {"slug": "aarhus",     "radius_km": 100, "name": "Aarhus"},
-      {"slug": "odense",     "radius_km": 80,  "name": "Odense"}
+      {
+        "slug": "copenhagen",
+        "radius_km": 120,
+        "name": "Copenhagen"
+      },
+      {
+        "slug": "aarhus",
+        "radius_km": 100,
+        "name": "Aarhus",
+        "fb_id": "115061638506051"
+      },
+      {
+        "slug": "odense",
+        "radius_km": 80,
+        "name": "Odense",
+        "fb_id": "110637728959835"
+      }
     ]
   },
   "EE": {
     "name": "Estonia",
     "cities": [
-      {"slug": "tallinn",    "radius_km": 150, "name": "Tallinn"},
-      {"slug": "tartu",      "radius_km": 100, "name": "Tartu"}
+      {
+        "slug": "tallinn",
+        "radius_km": 150,
+        "name": "Tallinn",
+        "fb_id": "106039436102339"
+      },
+      {
+        "slug": "tartu",
+        "radius_km": 100,
+        "name": "Tartu",
+        "fb_id": "106561152712690"
+      }
     ]
   },
   "ES": {
     "name": "Spain",
     "cities": [
-      {"slug": "madrid",     "radius_km": 150, "name": "Madrid"},
-      {"slug": "barcelona",  "radius_km": 100, "name": "Barcelona"},
-      {"slug": "seville",    "radius_km": 100, "name": "Seville"},
-      {"slug": "valencia",   "radius_km": 80,  "name": "Valencia"},
-      {"slug": "bilbao",     "radius_km": 80,  "name": "Bilbao"},
-      {"slug": "zaragoza",   "radius_km": 80,  "name": "Zaragoza"},
-      {"slug": "malaga",     "radius_km": 80,  "name": "Málaga"}
+      {
+        "slug": "madrid",
+        "radius_km": 150,
+        "name": "Madrid"
+      },
+      {
+        "slug": "barcelona",
+        "radius_km": 100,
+        "name": "Barcelona"
+      },
+      {
+        "slug": "seville",
+        "radius_km": 100,
+        "name": "Seville"
+      },
+      {
+        "slug": "valencia",
+        "radius_km": 80,
+        "name": "Valencia"
+      },
+      {
+        "slug": "bilbao",
+        "radius_km": 80,
+        "name": "Bilbao",
+        "fb_id": "110875455606568"
+      },
+      {
+        "slug": "zaragoza",
+        "radius_km": 80,
+        "name": "Zaragoza",
+        "fb_id": "106252896078918"
+      },
+      {
+        "slug": "malaga",
+        "radius_km": 80,
+        "name": "Málaga"
+      }
     ]
   },
   "FI": {
     "name": "Finland",
     "cities": [
-      {"slug": "helsinki",   "radius_km": 150, "name": "Helsinki"},
-      {"slug": "tampere",    "radius_km": 120, "name": "Tampere"},
-      {"slug": "turku",      "radius_km": 100, "name": "Turku"},
-      {"slug": "oulu",       "radius_km": 150, "name": "Oulu"}
+      {
+        "slug": "helsinki",
+        "radius_km": 150,
+        "name": "Helsinki"
+      },
+      {
+        "slug": "tampere",
+        "radius_km": 120,
+        "name": "Tampere",
+        "fb_id": "106245332744025"
+      },
+      {
+        "slug": "turku",
+        "radius_km": 100,
+        "name": "Turku",
+        "fb_id": "106440636059437"
+      },
+      {
+        "slug": "oulu",
+        "radius_km": 150,
+        "name": "Oulu",
+        "fb_id": "114754565203684"
+      }
     ]
   },
   "FR": {
     "name": "France",
     "cities": [
-      {"slug": "paris",      "radius_km": 150, "name": "Paris"},
-      {"slug": "lyon",       "radius_km": 100, "name": "Lyon"},
-      {"slug": "marseille",  "radius_km": 100, "name": "Marseille"},
-      {"slug": "toulouse",   "radius_km": 100, "name": "Toulouse"},
-      {"slug": "bordeaux",   "radius_km": 100, "name": "Bordeaux"},
-      {"slug": "lille",      "radius_km": 80,  "name": "Lille"},
-      {"slug": "strasbourg", "radius_km": 80,  "name": "Strasbourg"},
-      {"slug": "nantes",     "radius_km": 100, "name": "Nantes"}
+      {
+        "slug": "paris",
+        "radius_km": 150,
+        "name": "Paris",
+        "fb_id": "112916935394076"
+      },
+      {
+        "slug": "lyon",
+        "radius_km": 100,
+        "name": "Lyon"
+      },
+      {
+        "slug": "marseille",
+        "radius_km": 100,
+        "name": "Marseille"
+      },
+      {
+        "slug": "toulouse",
+        "radius_km": 100,
+        "name": "Toulouse"
+      },
+      {
+        "slug": "bordeaux",
+        "radius_km": 100,
+        "name": "Bordeaux",
+        "fb_id": "115838035093755"
+      },
+      {
+        "slug": "lille",
+        "radius_km": 80,
+        "name": "Lille",
+        "fb_id": "114881545191743"
+      },
+      {
+        "slug": "strasbourg",
+        "radius_km": 80,
+        "name": "Strasbourg",
+        "fb_id": "114470468564233"
+      },
+      {
+        "slug": "nantes",
+        "radius_km": 100,
+        "name": "Nantes",
+        "fb_id": "110077065688527"
+      }
     ]
   },
   "GB": {
     "name": "United Kingdom",
     "cities": [
-      {"slug": "london",     "radius_km": 100, "name": "London"},
-      {"slug": "manchester", "radius_km": 80,  "name": "Manchester"},
-      {"slug": "birmingham", "radius_km": 80,  "name": "Birmingham"},
-      {"slug": "glasgow",    "radius_km": 80,  "name": "Glasgow"},
-      {"slug": "leeds",      "radius_km": 80,  "name": "Leeds"},
-      {"slug": "bristol",    "radius_km": 80,  "name": "Bristol"},
-      {"slug": "edinburgh",  "radius_km": 80,  "name": "Edinburgh"},
-      {"slug": "newcastle",  "radius_km": 80,  "name": "Newcastle"}
+      {
+        "slug": "london",
+        "radius_km": 100,
+        "name": "London"
+      },
+      {
+        "slug": "manchester",
+        "radius_km": 80,
+        "name": "Manchester"
+      },
+      {
+        "slug": "birmingham",
+        "radius_km": 80,
+        "name": "Birmingham"
+      },
+      {
+        "slug": "glasgow",
+        "radius_km": 80,
+        "name": "Glasgow"
+      },
+      {
+        "slug": "leeds",
+        "radius_km": 80,
+        "name": "Leeds"
+      },
+      {
+        "slug": "bristol",
+        "radius_km": 80,
+        "name": "Bristol"
+      },
+      {
+        "slug": "edinburgh",
+        "radius_km": 80,
+        "name": "Edinburgh"
+      },
+      {
+        "slug": "newcastle",
+        "radius_km": 80,
+        "name": "Newcastle",
+        "fb_id": "116742111732286"
+      }
     ]
   },
   "GR": {
     "name": "Greece",
     "cities": [
-      {"slug": "athens",         "radius_km": 150, "name": "Athens"},
-      {"slug": "thessaloniki",   "radius_km": 120, "name": "Thessaloniki"},
-      {"slug": "heraklion",      "radius_km": 80,  "name": "Heraklion"}
+      {
+        "slug": "athens",
+        "radius_km": 150,
+        "name": "Athens"
+      },
+      {
+        "slug": "thessaloniki",
+        "radius_km": 120,
+        "name": "Thessaloniki",
+        "fb_id": "407418922629907"
+      },
+      {
+        "slug": "heraklion",
+        "radius_km": 80,
+        "name": "Heraklion",
+        "fb_id": "110719648953142"
+      }
     ]
   },
   "HR": {
     "name": "Croatia",
     "cities": [
-      {"slug": "zagreb",     "radius_km": 150, "name": "Zagreb"},
-      {"slug": "split",      "radius_km": 100, "name": "Split"},
-      {"slug": "rijeka",     "radius_km": 80,  "name": "Rijeka"}
+      {
+        "slug": "zagreb",
+        "radius_km": 150,
+        "name": "Zagreb"
+      },
+      {
+        "slug": "split",
+        "radius_km": 100,
+        "name": "Split",
+        "fb_id": "110647505623727"
+      },
+      {
+        "slug": "rijeka",
+        "radius_km": 80,
+        "name": "Rijeka",
+        "fb_id": "102167109824342"
+      }
     ]
   },
   "HU": {
     "name": "Hungary",
     "cities": [
-      {"slug": "budapest",              "radius_km": 150, "name": "Budapest"},
-      {"slug": "debrecen",  "fb_id": "109375022413858",               "radius_km": 100, "name": "Debrecen"},
-      {"slug": "pecs",    "fb_id": "104083222960076",                 "radius_km": 80, "name": "Pécs"},
-      {"slug": "gyor",   "fb_id": "109233199097493",                  "radius_km": 80, "name": "Győr"},
-      {"slug": "miskolc",  "fb_id": "114759051873504", "radius_km": 80, "name": "Miskolc"}
+      {
+        "slug": "budapest",
+        "radius_km": 150,
+        "name": "Budapest"
+      },
+      {
+        "slug": "debrecen",
+        "fb_id": "130856186993642",
+        "radius_km": 100,
+        "name": "Debrecen"
+      },
+      {
+        "slug": "pecs",
+        "fb_id": "104083222960076",
+        "radius_km": 80,
+        "name": "Pécs"
+      },
+      {
+        "slug": "gyor",
+        "fb_id": "109233199097493",
+        "radius_km": 80,
+        "name": "Győr"
+      },
+      {
+        "slug": "miskolc",
+        "fb_id": "114759051873504",
+        "radius_km": 80,
+        "name": "Miskolc"
+      }
     ]
   },
   "IE": {
     "name": "Ireland",
     "cities": [
-      {"slug": "dublin",     "radius_km": 120, "name": "Dublin"},
-      {"slug": "cork",       "radius_km": 100, "name": "Cork"},
-      {"slug": "galway",     "radius_km": 80,  "name": "Galway"}
+      {
+        "slug": "dublin",
+        "radius_km": 120,
+        "name": "Dublin"
+      },
+      {
+        "slug": "cork",
+        "radius_km": 100,
+        "name": "Cork",
+        "fb_id": "108876425804079"
+      },
+      {
+        "slug": "galway",
+        "radius_km": 80,
+        "name": "Galway",
+        "fb_id": "108228399212088"
+      }
     ]
   },
   "IT": {
     "name": "Italy",
     "cities": [
-      {"slug": "milan",      "radius_km": 100, "name": "Milan"},
-      {"slug": "rome",       "radius_km": 120, "name": "Rome"},
-      {"slug": "naples",     "radius_km": 100, "name": "Naples"},
-      {"slug": "turin",      "radius_km": 80,  "name": "Turin"},
-      {"slug": "bologna",    "radius_km": 80,  "name": "Bologna"},
-      {"slug": "florence",   "radius_km": 80,  "name": "Florence"},
-      {"slug": "venice",     "radius_km": 80,  "name": "Venice"},
-      {"slug": "bari",       "radius_km": 100, "name": "Bari"},
-      {"slug": "palermo",    "radius_km": 100, "name": "Palermo"}
+      {
+        "slug": "milan",
+        "radius_km": 100,
+        "name": "Milan"
+      },
+      {
+        "slug": "rome",
+        "radius_km": 120,
+        "name": "Rome"
+      },
+      {
+        "slug": "naples",
+        "radius_km": 100,
+        "name": "Naples"
+      },
+      {
+        "slug": "turin",
+        "radius_km": 80,
+        "name": "Turin"
+      },
+      {
+        "slug": "bologna",
+        "radius_km": 80,
+        "name": "Bologna",
+        "fb_id": "110340245656034"
+      },
+      {
+        "slug": "florence",
+        "radius_km": 80,
+        "name": "Florence",
+        "fb_id": "105782926129203"
+      },
+      {
+        "slug": "venice",
+        "radius_km": 80,
+        "name": "Venice",
+        "fb_id": "107933505906257"
+      },
+      {
+        "slug": "bari",
+        "radius_km": 100,
+        "name": "Bari",
+        "fb_id": "102165119825467"
+      },
+      {
+        "slug": "palermo",
+        "radius_km": 100,
+        "name": "Palermo"
+      }
     ]
   },
   "LT": {
     "name": "Lithuania",
     "cities": [
-      {"slug": "vilnius",    "radius_km": 150, "name": "Vilnius"},
-      {"slug": "kaunas",     "radius_km": 100, "name": "Kaunas"}
+      {
+        "slug": "vilnius",
+        "radius_km": 150,
+        "name": "Vilnius"
+      },
+      {
+        "slug": "kaunas",
+        "radius_km": 100,
+        "name": "Kaunas",
+        "fb_id": "104051392965209"
+      }
     ]
   },
   "LU": {
     "name": "Luxembourg",
     "cities": [
-      {"slug": "luxembourg", "radius_km": 60,  "name": "Luxembourg City"}
+      {
+        "slug": "luxembourg",
+        "radius_km": 60,
+        "name": "Luxembourg City"
+      }
     ]
   },
   "LV": {
     "name": "Latvia",
     "cities": [
-      {"slug": "riga",       "radius_km": 150, "name": "Riga"},
-      {"slug": "daugavpils", "radius_km": 80,  "name": "Daugavpils"}
+      {
+        "slug": "riga",
+        "radius_km": 150,
+        "name": "Riga"
+      },
+      {
+        "slug": "daugavpils",
+        "radius_km": 80,
+        "name": "Daugavpils",
+        "fb_id": "104002982969473"
+      }
     ]
   },
   "NL": {
     "name": "Netherlands",
     "cities": [
-      {"slug": "amsterdam",  "radius_km": 80,  "name": "Amsterdam"},
-      {"slug": "rotterdam",  "radius_km": 60,  "name": "Rotterdam"},
-      {"slug": "the-hague",  "radius_km": 60,  "name": "The Hague"},
-      {"slug": "eindhoven",  "radius_km": 60,  "name": "Eindhoven"},
-      {"slug": "utrecht",    "radius_km": 60,  "name": "Utrecht"}
+      {
+        "slug": "amsterdam",
+        "radius_km": 80,
+        "name": "Amsterdam"
+      },
+      {
+        "slug": "rotterdam",
+        "radius_km": 60,
+        "name": "Rotterdam"
+      },
+      {
+        "slug": "the-hague",
+        "radius_km": 60,
+        "name": "The Hague",
+        "fb_id": "106024019437151"
+      },
+      {
+        "slug": "eindhoven",
+        "radius_km": 60,
+        "name": "Eindhoven",
+        "fb_id": "112239828802227"
+      },
+      {
+        "slug": "utrecht",
+        "radius_km": 60,
+        "name": "Utrecht",
+        "fb_id": "169137873096468"
+      }
     ]
   },
   "NO": {
     "name": "Norway",
     "cities": [
-      {"slug": "oslo",       "radius_km": 150, "name": "Oslo"},
-      {"slug": "bergen",     "radius_km": 120, "name": "Bergen"},
-      {"slug": "trondheim",  "radius_km": 120, "name": "Trondheim"},
-      {"slug": "stavanger",  "radius_km": 100, "name": "Stavanger"}
+      {
+        "slug": "oslo",
+        "radius_km": 150,
+        "name": "Oslo"
+      },
+      {
+        "slug": "bergen",
+        "radius_km": 120,
+        "name": "Bergen",
+        "fb_id": "1470833816561638"
+      },
+      {
+        "slug": "trondheim",
+        "radius_km": 120,
+        "name": "Trondheim",
+        "fb_id": "110429825645017"
+      },
+      {
+        "slug": "stavanger",
+        "radius_km": 100,
+        "name": "Stavanger",
+        "fb_id": "115341461813501"
+      }
     ]
   },
   "PL": {
     "name": "Poland",
     "cities": [
-      {"slug": "warsaw",     "radius_km": 150, "name": "Warsaw"},
-      {"slug": "krakow",     "radius_km": 120, "name": "Kraków"},
-      {"slug": "wroclaw",    "radius_km": 120, "name": "Wrocław"},
-      {"slug": "gdansk",     "radius_km": 100, "name": "Gdańsk"},
-      {"slug": "poznan",     "radius_km": 100, "name": "Poznań"},
-      {"slug": "lodz",       "radius_km": 80,  "name": "Łódź"},
-      {"slug": "katowice",   "radius_km": 80,  "name": "Katowice"}
+      {
+        "slug": "warsaw",
+        "radius_km": 150,
+        "name": "Warsaw"
+      },
+      {
+        "slug": "krakow",
+        "radius_km": 120,
+        "name": "Kraków"
+      },
+      {
+        "slug": "wroclaw",
+        "radius_km": 120,
+        "name": "Wrocław",
+        "fb_id": "110145572342035"
+      },
+      {
+        "slug": "gdansk",
+        "radius_km": 100,
+        "name": "Gdańsk",
+        "fb_id": "112082238810004"
+      },
+      {
+        "slug": "poznan",
+        "radius_km": 100,
+        "name": "Poznań"
+      },
+      {
+        "slug": "lodz",
+        "radius_km": 80,
+        "name": "Łódź",
+        "fb_id": "111112818913904"
+      },
+      {
+        "slug": "katowice",
+        "radius_km": 80,
+        "name": "Katowice",
+        "fb_id": "111655468853732"
+      }
     ]
   },
   "PT": {
     "name": "Portugal",
     "cities": [
-      {"slug": "lisbon",     "radius_km": 150, "name": "Lisbon"},
-      {"slug": "porto",      "radius_km": 120, "name": "Porto"},
-      {"slug": "faro",       "radius_km": 80,  "name": "Faro"}
+      {
+        "slug": "lisbon",
+        "radius_km": 150,
+        "name": "Lisbon"
+      },
+      {
+        "slug": "porto",
+        "radius_km": 120,
+        "name": "Porto",
+        "fb_id": "108177419217114"
+      },
+      {
+        "slug": "faro",
+        "radius_km": 80,
+        "name": "Faro",
+        "fb_id": "104113272959985"
+      }
     ]
   },
   "RO": {
     "name": "Romania",
     "cities": [
-      {"slug": "bucharest",  "radius_km": 150, "name": "Bucharest"},
-      {"slug": "cluj-napoca","radius_km": 120, "name": "Cluj-Napoca"},
-      {"slug": "timisoara",  "radius_km": 100, "name": "Timișoara"},
-      {"slug": "iasi",       "radius_km": 100, "name": "Iași"},
-      {"slug": "brasov",     "radius_km": 80,  "name": "Brașov"}
+      {
+        "slug": "bucharest",
+        "radius_km": 150,
+        "name": "Bucharest"
+      },
+      {
+        "slug": "cluj-napoca",
+        "radius_km": 120,
+        "name": "Cluj-Napoca",
+        "fb_id": "109529709065736"
+      },
+      {
+        "slug": "timisoara",
+        "radius_km": 100,
+        "name": "Timișoara",
+        "fb_id": "107982459236366"
+      },
+      {
+        "slug": "iasi",
+        "radius_km": 100,
+        "name": "Iași",
+        "fb_id": "101882609853782"
+      },
+      {
+        "slug": "brasov",
+        "radius_km": 80,
+        "name": "Brașov",
+        "fb_id": "114791928537378"
+      }
     ]
   },
   "RS": {
     "name": "Serbia",
     "cities": [
-      {"slug": "belgrade",   "radius_km": 150, "name": "Belgrade"},
-      {"slug": "novi-sad",   "radius_km": 80,  "name": "Novi Sad"}
+      {
+        "slug": "belgrade",
+        "radius_km": 150,
+        "name": "Belgrade",
+        "fb_id": "109920975697736"
+      },
+      {
+        "slug": "novi-sad",
+        "radius_km": 80,
+        "name": "Novi Sad",
+        "fb_id": "106342896071173"
+      }
     ]
   },
   "SE": {
     "name": "Sweden",
     "cities": [
-      {"slug": "stockholm",  "radius_km": 150, "name": "Stockholm"},
-      {"slug": "gothenburg", "radius_km": 120, "name": "Gothenburg"},
-      {"slug": "malmo",      "radius_km": 80,  "name": "Malmö"},
-      {"slug": "uppsala",    "radius_km": 80,  "name": "Uppsala"},
-      {"slug": "linkoping",  "radius_km": 100, "name": "Linköping"}
+      {
+        "slug": "stockholm",
+        "radius_km": 150,
+        "name": "Stockholm"
+      },
+      {
+        "slug": "gothenburg",
+        "radius_km": 120,
+        "name": "Gothenburg"
+      },
+      {
+        "slug": "malmo",
+        "radius_km": 80,
+        "name": "Malmö",
+        "fb_id": "110837332277562"
+      },
+      {
+        "slug": "uppsala",
+        "radius_km": 80,
+        "name": "Uppsala",
+        "fb_id": "110976692260411"
+      },
+      {
+        "slug": "linkoping",
+        "radius_km": 100,
+        "name": "Linköping",
+        "fb_id": "110680185620981"
+      }
     ]
   },
   "SI": {
     "name": "Slovenia",
     "cities": [
-      {"slug": "ljubljana",  "radius_km": 120, "name": "Ljubljana"},
-      {"slug": "maribor",    "radius_km": 80,  "name": "Maribor"}
+      {
+        "slug": "ljubljana",
+        "radius_km": 120,
+        "name": "Ljubljana",
+        "fb_id": "111980668819694"
+      },
+      {
+        "slug": "maribor",
+        "radius_km": 80,
+        "name": "Maribor",
+        "fb_id": "108480445849805"
+      }
     ]
   },
   "SK": {
     "name": "Slovakia",
     "cities": [
-      {"slug": "bratislava", "radius_km": 120, "name": "Bratislava"},
-      {"slug": "kosice",     "radius_km": 100, "name": "Košice"},
-      {"slug": "presov",     "radius_km": 80,  "name": "Prešov"}
+      {
+        "slug": "bratislava",
+        "radius_km": 120,
+        "name": "Bratislava",
+        "fb_id": "110507998976900"
+      },
+      {
+        "slug": "kosice",
+        "radius_km": 100,
+        "name": "Košice",
+        "fb_id": "110032539025972"
+      },
+      {
+        "slug": "presov",
+        "radius_km": 80,
+        "name": "Prešov",
+        "fb_id": "108069349227981"
+      }
     ]
   },
   "UA": {
     "name": "Ukraine",
     "cities": [
-      {"slug": "kyiv",       "radius_km": 200, "name": "Kyiv"},
-      {"slug": "lviv",       "radius_km": 150, "name": "Lviv"},
-      {"slug": "odessa",     "radius_km": 150, "name": "Odessa"}
+      {
+        "slug": "kyiv",
+        "radius_km": 200,
+        "name": "Kyiv",
+        "fb_id": "111227078906045"
+      },
+      {
+        "slug": "lviv",
+        "radius_km": 150,
+        "name": "Lviv",
+        "fb_id": "114232468588881"
+      },
+      {
+        "slug": "odessa",
+        "radius_km": 150,
+        "name": "Odessa",
+        "fb_id": "106567572712806"
+      }
     ]
   }
 }

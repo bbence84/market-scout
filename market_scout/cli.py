@@ -291,8 +291,25 @@ def search(
             effective_cookies = p
 
     # --- Resolve providers ---
-    provider_names = resolve_providers([p.strip() for p in effective_providers.split(",") if p.strip()])
+    provider_tokens = [p.strip() for p in effective_providers.split(",") if p.strip()]
     location_tokens = [loc.strip() for loc in effective_location.split(",") if loc.strip()]
+
+    # When country codes are passed as --location and no explicit --provider is set,
+    # infer providers from those country codes (same effect as --provider AT).
+    if not provider and not cfg.get("providers"):
+        inferred_from_loc = [t for t in location_tokens if len(t) == 2 and t.isalpha()]
+        if inferred_from_loc:
+            provider_tokens = inferred_from_loc
+
+    provider_names = resolve_providers(provider_tokens)
+
+    # When country codes are passed as --provider and no explicit --location is set,
+    # use those country codes as the Facebook location so FB searches that country
+    # instead of falling back to the config's saved location.
+    if not location and not cfg.get("location"):
+        inferred_from_prov = [t for t in provider_tokens if len(t) == 2 and t.isalpha()]
+        if inferred_from_prov:
+            location_tokens = inferred_from_prov
 
     unknown = [n for n in provider_names if n not in PROVIDERS]
     if unknown:
