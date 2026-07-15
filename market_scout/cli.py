@@ -662,6 +662,7 @@ def search(
 _INIT_PROVIDERS: dict[str, dict] = {
     "facebook": {
         "label": "Facebook Marketplace",
+        "short": "Needs logged-in FB session (cookies.json)",
         "note": (
             "Requires a logged-in Facebook session (cookies.json).\n"
             "The browser opens facebook.com/marketplace — log in and the cookies\n"
@@ -670,6 +671,7 @@ _INIT_PROVIDERS: dict[str, dict] = {
     },
     "allegro_pl": {
         "label": "Allegro Poland (allegro.pl)",
+        "short": "DataDome CAPTCHA — solve once, session saved",
         "note": (
             "Allegro uses DataDome bot detection. The browser opens allegro.pl —\n"
             "solve the CAPTCHA once and the session is saved to\n"
@@ -678,6 +680,7 @@ _INIT_PROVIDERS: dict[str, dict] = {
     },
     "allegro_cz": {
         "label": "Allegro Czechia (allegro.cz)",
+        "short": "DataDome CAPTCHA — solve once, session saved",
         "note": (
             "Allegro uses DataDome bot detection. The browser opens allegro.cz —\n"
             "solve the CAPTCHA once and the session is saved to\n"
@@ -686,6 +689,7 @@ _INIT_PROVIDERS: dict[str, dict] = {
     },
     "allegro_sk": {
         "label": "Allegro Slovakia (allegro.sk)",
+        "short": "DataDome CAPTCHA — solve once, session saved",
         "note": (
             "Allegro uses DataDome bot detection. The browser opens allegro.sk —\n"
             "solve the CAPTCHA once and the session is saved to\n"
@@ -818,13 +822,22 @@ def providers():
     t = Table(box=box.ROUNDED)
     t.add_column("Provider", style="bold cyan")
     t.add_column("Countries")
+    t.add_column("Init required", style="yellow")
     t.add_column("Note", style="dim")
     for name, prov in PROVIDERS.items():
         countries = ", ".join(prov.countries)
         note = "location-aware (use --location)" if "*" in prov.countries else "nationwide only"
-        t.add_row(name, countries, note)
+        if name in _INIT_PROVIDERS:
+            info = _INIT_PROVIDERS[name]
+            init_cell = f"[yellow]yes — run: market-scout init {name}[/yellow]"
+            note = info["short"]
+        else:
+            init_cell = "[green]no[/green]"
+        t.add_row(name, countries, init_cell, note)
     out.print(t)
     out.print("\n[dim]Pass a country code to --provider to select all matching providers, e.g. --provider HU[/dim]")
+    out.print("[dim]Providers marked 'Init required' need a one-time browser setup before headless use.[/dim]")
+    out.print("[dim]Run [bold]market-scout init <provider>[/bold] to set them up.[/dim]")
 
 
 # ---------------------------------------------------------------------------

@@ -42,7 +42,14 @@ _DOMAIN_CURRENCY = {
     "sk": "EUR",
 }
 
-# Consent/cookie banner dismiss selectors (tried in order)
+# Search path differs per domain (localized URLs)
+_DOMAIN_SEARCH_PATH = {
+    "pl": "listing",
+    "cz": "vyhledavani",
+    "sk": "vyhladavanie",
+}
+
+
 _CONSENT_SELECTORS = [
     'button[data-role="accept-consent"]',
     'button:has-text("Zgadzam się")',
@@ -68,19 +75,23 @@ def _is_blocked(html: str) -> bool:
 
 def _extract_from_json(html: str, domain: str, req: SearchRequest) -> list[Listing]:
     """
-    Extract listings from the embedded listing_StoreState JSON blob.
-    This is the primary extraction path and returns the richest data.
+    Extract listings from embedded JSON in <script> tags (both application/json
+    and plain script tags containing the opbox listing data).
     """
     results = []
-    # Find all <script type="application/json"> blocks
     soup = BeautifulSoup(html, "lxml")
-    for script in soup.find_all("script", type="application/json"):
+
+    # Try both type="application/json" and bare <script> tags
+    candidates = soup.find_all("script", type="application/json") + [
+        s for s in soup.find_all("script") if not s.get("type") and s.string and "offerId" in (s.string or "")
+    ]
+
+    for script in candidates:
         try:
             data = json.loads(script.string or "")
         except (json.JSONDecodeError, ValueError):
             continue
 
-        # Look for the listing state — it may be the top-level object or nested
         tiles = _find_tiles(data)
         if not tiles:
             continue
@@ -94,7 +105,7 @@ def _extract_from_json(html: str, domain: str, req: SearchRequest) -> list[Listi
                 results.append(lst)
 
         if results:
-            break  # found the right script block
+            break
 
     return results
 
@@ -102,15 +113,15 @@ def _extract_from_json(html: str, domain: str, req: SearchRequest) -> list[Listi
 def _find_tiles(data) -> list:
     """Recursively find the list of offer tiles inside the JSON blob."""
     if isinstance(data, list):
-        # If list of dicts with 'title' or 'offerId', that's it
-        if data and isinstance(data[0], dict) and ("offerId" in data[0] or "title" in data[0]):
+        if data and isinstance(data[0], dict) and (
+            "offerId" in data[0] or "offer_id" in data[0] or "title" in data[0]
+        ):
             return data
         for item in data:
             found = _find_tiles(item)
             if found:
                 return found
     elif isinstance(data, dict):
-        # Common key patterns seen in allegro JSON
         for key in ("items", "tiles", "offers", "listing", "products"):
             if key in data:
                 found = _find_tiles(data[key])
@@ -126,21 +137,25 @@ def _find_tiles(data) -> list:
 
 def _parse_tile(tile: dict, base_url: str, currency: str, domain: str) -> Listing | None:
     try:
-        # Title
+        # Title — may be a dict with "text" or a plain string
         title_block = tile.get("title") or {}
         title = (
-            title_block.get("text") or
+            (title_block.get("text") if isinstance(title_block, dict) else title_block) or
             tile.get("name") or
             tile.get("productName") or ""
-        ).strip()
+        )
+        if isinstance(title, dict):
+            title = title.get("text") or ""
+        title = str(title).strip()
         if not title:
             return None
 
-        # URL
+        # URL — allegro.cz uses /produkt/ slugs; allegro.pl uses /oferta/ IDs
         url = tile.get("url") or tile.get("offerUrl") or ""
         if url and not url.startswith("http"):
             url = base_url + url
-        offer_id = tile.get("offerId") or tile.get("id") or ""
+        offer_id = tile.get("offerId") or tile.get("offer_id") or tile.get("id") or ""
+        product_id = tile.get("product_id") or ""
         if not url and offer_id:
             url = f"{base_url}/oferta/{offer_id}"
 
@@ -227,8 +242,12 @@ def _extract_from_html(html: str, domain: str, req: SearchRequest) -> list[Listi
 
     for article in soup.select("article"):
         try:
-            link = article.select_one(f'a[href*="allegro.{domain}/oferta/"]') or \
-                   article.select_one('a[href*="/oferta/"]')
+            link = (
+                article.select_one(f'a[href*="allegro.{domain}/oferta/"]') or
+                article.select_one(f'a[href*="allegro.{domain}/produkt/"]') or
+                article.select_one('a[href*="/oferta/"]') or
+                article.select_one('a[href*="/produkt/"]')
+            )
             if not link:
                 continue
             url = link.get("href", "")
@@ -295,14 +314,18 @@ async def _run_search(domain: str, req: SearchRequest) -> list[Listing]:
     seen_urls: set[str] = set()
 
     async with async_playwright() as p:
-        # Persistent context keeps DataDome cookies between runs
-        ctx = await p.chromium.launch_persistent_context(
+        # Persistent context keeps DataDome cookies between runs.
+        # Use channel="chrome" (real Chrome binary) when headless so DataDome
+        # sees the same TLS + JS fingerprint as a real browser session.
+        launch_kwargs: dict = dict(
             user_data_dir=str(profile_dir),
             headless=req.headless,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
+                "--disable-infobars",
+                "--window-size=1280,900",
             ],
             user_agent=(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -312,12 +335,19 @@ async def _run_search(domain: str, req: SearchRequest) -> list[Listing]:
             locale="pl-PL" if domain == "pl" else ("cs-CZ" if domain == "cz" else "sk-SK"),
             viewport={"width": 1280, "height": 900},
         )
+        if req.headless:
+            # channel="chrome" uses the real installed Chrome rather than
+            # Playwright's bundled Chromium — real Chrome is not detected by
+            # DataDome's headless fingerprint checks.
+            launch_kwargs["channel"] = "chrome"
+        ctx = await p.chromium.launch_persistent_context(**launch_kwargs)
 
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
 
         page_num = 1
         while len(results) < req.max_results:
-            url = f"{base_url}/listing?string={quote_plus(req.query)}&p={page_num}"
+            search_path = _DOMAIN_SEARCH_PATH.get(domain, "listing")
+            url = f"{base_url}/{search_path}?string={quote_plus(req.query)}&p={page_num}"
             if req.min_price:
                 url += f"&price_from={req.min_price}"
             if req.max_price:
@@ -394,6 +424,22 @@ async def _run_search(domain: str, req: SearchRequest) -> list[Listing]:
 
             page_num += 1
             await asyncio.sleep(random.uniform(1.5, 3.0))
+
+        # Detail-page description fetch
+        if req.scrape_details and results:
+            for lst in results:
+                if not lst.url:
+                    continue
+                try:
+                    await page.goto(lst.url, wait_until="domcontentloaded", timeout=20_000)
+                    await asyncio.sleep(random.uniform(1.0, 2.0))
+                    detail_html = await page.content()
+                    detail_soup = BeautifulSoup(detail_html, "lxml")
+                    desc_el = detail_soup.select_one('[data-box-name="Description"]')
+                    if desc_el:
+                        lst.description = desc_el.get_text(separator=" ", strip=True)
+                except Exception:
+                    pass
 
         await ctx.close()
 

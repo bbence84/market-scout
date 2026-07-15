@@ -1,8 +1,9 @@
 """
 Global configuration for market-scout.
 
-Config file location: ~/.market-scout/config.toml
+Config file location: <repo>/user_config/config.toml
 Created automatically on first run with commented defaults.
+The user_config/ directory is git-ignored.
 
 All CLI flags override config values for that run.
 """
@@ -15,7 +16,8 @@ from typing import Any
 # tomllib is stdlib since Python 3.11 (required by pyproject.toml)
 import tomllib
 
-_CONFIG_DIR = Path.home() / ".market-scout"
+# Repo root is two levels up from this file (market_scout/config.py)
+_CONFIG_DIR = Path(__file__).parent.parent / "user_config"
 _CONFIG_PATH = _CONFIG_DIR / "config.toml"
 
 _DEFAULTS: dict[str, Any] = {

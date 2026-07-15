@@ -185,7 +185,7 @@ market-scout config --set max_results=30
 market-scout config --set cookies=~/.market-scout/cookies.json
 ```
 
-Config file: `~/.market-scout/config.toml` — plain TOML, edit in any text editor.
+Config file: `user_config/config.toml` inside the repo directory (git-ignored) — plain TOML, edit in any text editor.
 
 **LLM features** (translation, suggestions, AI analysis) all use [OpenRouter](https://openrouter.ai). Register for free, top up to use paid models, or use free-tier models. Default model: `anthropic/claude-haiku-4-5` (fast, cheap).
 
@@ -197,17 +197,71 @@ market-scout config --set openrouter.model=openai/gpt-4o-mini
 
 ## Provider initialisation
 
-Some providers need a one-time browser setup:
+Some providers use bot-detection that requires a **one-time human action** before headless searches work. After that, the session is saved and all future runs are fully automatic.
+
+### Facebook Marketplace
+
+Facebook requires you to be logged in. Run init once to save your session cookies:
 
 ```bash
-market-scout init                  # list providers that need init
-market-scout init facebook         # log in to Facebook once
-market-scout init allegro_pl       # solve Allegro CAPTCHA once
-market-scout init allegro_cz
-market-scout init allegro_sk
+market-scout init facebook
 ```
 
-Most providers work without any init: Hardverapró, Jófogás, Vatera, Bazoš, Kleinanzeigen, OLX, Wallapop, Willhaben, Shpock, Leboncoin, Subito.
+A browser window opens at `facebook.com/marketplace`. Log in normally (or dismiss any prompts if already logged in) — cookies are saved automatically to `cookies.json` in the current directory.
+
+Then tell market-scout where the file lives so every future run picks it up:
+
+```bash
+market-scout config --set cookies=./cookies.json
+```
+
+> **If Facebook blocks searches later**: cookies expire every few weeks. Re-run `market-scout init facebook` to refresh them.
+
+---
+
+### Allegro (Poland · Czech Republic · Slovakia)
+
+Allegro uses [DataDome](https://datadome.co) bot protection. You need to solve a CAPTCHA once per country domain — after that the browser profile is saved and headless searches work indefinitely.
+
+```bash
+market-scout init allegro_pl   # allegro.pl  → saved to ~/.market-scout/allegro-profile/pl/
+market-scout init allegro_cz   # allegro.cz  → saved to ~/.market-scout/allegro-profile/cz/
+market-scout init allegro_sk   # allegro.sk  → saved to ~/.market-scout/allegro-profile/sk/
+```
+
+A browser window opens — simply solve the CAPTCHA (slide puzzle or click challenge) and the session is saved. You don't need to log in to Allegro.
+
+> **If Allegro blocks headless searches again**: DataDome sessions eventually expire or rotate fingerprints. Re-run the relevant `market-scout init allegro_*` command to refresh the session.
+
+---
+
+### Providers that work without any init
+
+The following providers work out of the box — no setup needed:
+
+| Provider | Method |
+|----------|--------|
+| Hardverapró, Jófogás, Vatera | Plain HTTP |
+| Bazoš.cz, Bazoš.sk | Plain HTTP |
+| Kleinanzeigen | Chrome TLS impersonation (curl_cffi) |
+| OLX (UA/PL/RO/PT/BG) | Public REST API |
+| Wallapop | Public REST API |
+| Willhaben, Shpock | Plain HTTP |
+| Leboncoin, Subito | Plain HTTP |
+
+---
+
+### Quick reference
+
+```bash
+market-scout init                  # list all providers that need init
+market-scout init facebook         # FB: log in once, cookies saved
+market-scout init allegro_pl       # Allegro PL: solve CAPTCHA once
+market-scout init allegro_cz       # Allegro CZ: solve CAPTCHA once
+market-scout init allegro_sk       # Allegro SK: solve CAPTCHA once
+```
+
+The `market-scout providers` command shows which providers are flagged as requiring init and the exact command to run.
 
 ---
 

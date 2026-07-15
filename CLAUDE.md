@@ -11,8 +11,8 @@ The `market-scout init <provider>` command handles all of them.
 |---|---|---|
 | `facebook` | Requires a logged-in Facebook account | `cookies.json` (user-configurable via `--cookies` or config `cookies=`) |
 | `allegro_pl` | DataDome bot detection — CAPTCHA must be solved once | `~/.market-scout/allegro-profile/pl/` (Playwright persistent profile) |
-| `allegro_cz` | DataDome bot detection — CAPTCHA must be solved once | `~/.market-scout/allegro-profile/cz/` |
-| `allegro_sk` | DataDome bot detection — CAPTCHA must be solved once | `~/.market-scout/allegro-profile/sk/` |
+| `allegro_cz` | DataDome bot detection — CAPTCHA must be solved once; headless uses real Chrome (`channel="chrome"`) | `~/.market-scout/allegro-profile/cz/` |
+| `allegro_sk` | DataDome bot detection — CAPTCHA must be solved once; headless uses real Chrome (`channel="chrome"`) | `~/.market-scout/allegro-profile/sk/` |
 
 ### Providers that work headlessly without init
 
