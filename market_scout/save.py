@@ -150,137 +150,289 @@ def save_txt(listings: Sequence[Listing], meta: dict) -> Path:
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>market-scout — {query}</title>
 <style>
+  :root {{
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --surface2: #f1f3f5;
+    --border: #e0e4e8;
+    --border-strong: #c8cdd3;
+    --text: #1a1d21;
+    --text-muted: #6c737a;
+    --text-subtle: #9aa0a8;
+    --accent: #4f7ef7;
+    --accent-hover: #3a68e0;
+    --row-hover: #eef2ff;
+    --th-bg: #f1f3f5;
+    --tag-bg: #e8edf5;
+    --tag-text: #3d5a99;
+    --yes: #1a7f3c;
+    --yes-bg: #d4edda;
+    --maybe: #7a5c00;
+    --maybe-bg: #fff3cd;
+    --no: #9e1c1c;
+    --no-bg: #fde8e8;
+    --thumb-bg: #e8edf5;
+    --tooltip-bg: #1a1d21;
+    --tooltip-text: #f8f9fa;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+    --radius: 10px;
+  }}
+  [data-theme="dark"] {{
+    --bg: #0f1117;
+    --surface: #1a1d23;
+    --surface2: #22262f;
+    --border: #2e333d;
+    --border-strong: #404650;
+    --text: #e8eaf0;
+    --text-muted: #8b92a0;
+    --text-subtle: #5a6170;
+    --accent: #6b93ff;
+    --accent-hover: #8aaaff;
+    --row-hover: #1e2340;
+    --th-bg: #1e2129;
+    --tag-bg: #1e2a45;
+    --tag-text: #7aaaf5;
+    --yes: #4caf73;
+    --yes-bg: #0d2e1a;
+    --maybe: #e0a830;
+    --maybe-bg: #2a1e00;
+    --no: #e05555;
+    --no-bg: #2e0d0d;
+    --thumb-bg: #1e2333;
+    --tooltip-bg: #e8eaf0;
+    --tooltip-text: #1a1d23;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+  }}
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
-    background: #f5f0e8;
-    color: #1a1a1a;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 13px;
-    padding: 32px 40px;
-    max-width: 1200px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+    font-size: 13.5px;
+    line-height: 1.5;
+    padding: 28px 32px 48px;
+    max-width: 1280px;
     margin: 0 auto;
+    transition: background .2s, color .2s;
+  }}
+  /* ── Header ── */
+  .header {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }}
+  .logo {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }}
+  .logo-icon {{
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
   }}
   h1 {{
-    font-size: 18px;
-    font-weight: bold;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    border-bottom: 2px solid #1a1a1a;
-    padding-bottom: 6px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    color: var(--text);
   }}
-  .meta {{
+  h1 span {{ color: var(--text-muted); font-weight: 400; }}
+  /* ── Theme toggle ── */
+  .theme-btn {{
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
     font-size: 12px;
-    color: #555;
-    margin-bottom: 24px;
-    margin-top: 8px;
-    line-height: 1.9;
-    border-left: 3px solid #aaa;
-    padding-left: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
   }}
-  .meta span::before {{ content: "• "; color: #999; }}
+  .theme-btn:hover {{ background: var(--border); color: var(--text); }}
+  .theme-icon {{ font-size: 14px; }}
+  /* ── Meta pills ── */
+  .meta {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+  }}
+  .meta span {{
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .01em;
+  }}
+  /* ── Table ── */
+  .table-wrap {{
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    background: var(--surface);
+  }}
   table {{
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid #ccc;
   }}
   th {{
-    background: #e8e2d6;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 11px;
-    font-weight: bold;
+    background: var(--th-bg);
+    font-size: 10.5px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .06em;
-    padding: 8px 10px;
+    letter-spacing: .07em;
+    color: var(--text-muted);
+    padding: 9px 12px;
     text-align: left;
-    border-bottom: 2px solid #aaa;
-    border-right: 1px solid #ccc;
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }}
   td {{
-    padding: 7px 10px;
-    border-bottom: 1px solid #ddd;
-    border-right: 1px solid #e8e2d6;
-    vertical-align: top;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
   }}
-  td:last-child, th:last-child {{ border-right: none; }}
-  tr:nth-child(even) td {{ background: #ede8de; }}
-  tr:hover td {{ background: #ddd8cc; }}
-  .num {{ color: #888; width: 30px; text-align: right; font-size: 11px; }}
-  .title {{ max-width: 320px; }}
-  .price {{ white-space: nowrap; font-weight: bold; }}
-  .provider {{ color: #555; white-space: nowrap; font-size: 12px; }}
-  .cond {{ font-size: 12px; color: #666; font-style: italic; }}
-  a {{ color: #1a1a1a; text-decoration: underline; }}
-  a:hover {{ color: #555; }}
-  /* Description tooltip */
-  .has-desc {{ position: relative; cursor: help; }}
+  tr:last-child td {{ border-bottom: none; }}
+  tr:hover td {{ background: var(--row-hover); }}
+  .num {{
+    color: var(--text-subtle);
+    width: 28px;
+    text-align: right;
+    font-size: 11px;
+    padding-right: 6px;
+  }}
+  .title {{ max-width: 300px; }}
+  .title a {{
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 500;
+  }}
+  .title a:hover {{ color: var(--accent); }}
+  .price {{
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+  }}
+  .provider {{
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-muted);
+  }}
+  .cond {{
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }}
+  .posted {{
+    font-size: 11.5px;
+    color: var(--text-subtle);
+    white-space: nowrap;
+  }}
+  /* ── Description tooltip ── */
+  .has-desc {{ position: relative; }}
   .has-desc::after {{
     content: attr(data-desc);
     display: none;
     position: absolute;
-    left: 0; top: 100%;
+    left: 0; top: calc(100% + 4px);
     z-index: 99;
-    background: #1a1a1a;
-    color: #f5f0e8;
-    font-size: 11px;
-    font-family: "Courier New", Courier, monospace;
-    line-height: 1.5;
-    padding: 8px 10px;
-    border-radius: 3px;
-    width: 340px;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    font-size: 12px;
+    line-height: 1.55;
+    padding: 10px 12px;
+    border-radius: 8px;
+    width: 360px;
     white-space: pre-wrap;
     word-break: break-word;
-    box-shadow: 2px 2px 8px rgba(0,0,0,.35);
+    box-shadow: 0 4px 16px rgba(0,0,0,.25);
+    pointer-events: none;
   }}
   .has-desc:hover::after {{ display: block; }}
   .desc-dot {{
     display: inline-block;
-    width: 6px; height: 6px;
+    width: 5px; height: 5px;
     border-radius: 50%;
-    background: #888;
-    margin-left: 4px;
+    background: var(--accent);
+    margin-left: 5px;
     vertical-align: middle;
+    opacity: .6;
     cursor: help;
   }}
-  /* AI match badge */
-  .ai {{ font-size: 11px; font-weight: bold; white-space: nowrap; cursor: help; }}
-  .ai-yes {{ color: #2a7a2a; }}
-  .ai-maybe {{ color: #8a6a00; }}
-  .ai-no {{ color: #8a0000; }}
-  .ai-info {{ font-size: 10px; font-style: normal; opacity: 0.6; }}
+  /* ── AI badge ── */
+  .ai {{
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 2px 7px;
+    white-space: nowrap;
+    cursor: help;
+  }}
+  .ai-yes  {{ color: var(--yes);   background: var(--yes-bg);   }}
+  .ai-maybe{{ color: var(--maybe); background: var(--maybe-bg); }}
+  .ai-no   {{ color: var(--no);    background: var(--no-bg);    }}
+  .ai-info {{ opacity: .55; font-size: 10px; }}
+  /* ── Thumbnail ── */
   .img-thumb {{
-    width: 56px; height: 42px;
+    width: 60px; height: 46px;
     object-fit: cover;
-    border: 1px solid #ccc;
+    border-radius: 6px;
+    border: 1px solid var(--border);
     display: block;
   }}
   .no-img {{
-    width: 56px; height: 42px;
-    background: #e0dbd0;
-    border: 1px solid #ccc;
+    width: 60px; height: 46px;
+    background: var(--thumb-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border);
     display: block;
   }}
+  /* ── Footer ── */
   footer {{
-    margin-top: 18px;
-    color: #888;
-    font-size: 11px;
-    border-top: 1px solid #ccc;
-    padding-top: 8px;
+    margin-top: 20px;
+    color: var(--text-subtle);
+    font-size: 11.5px;
+    text-align: right;
   }}
 </style>
 </head>
 <body>
-<h1>market-scout &mdash; search results</h1>
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">M</div>
+    <h1>market-scout <span>&mdash; search results</span></h1>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">
+    <span class="theme-icon">🌙</span><span id="themeLbl">Dark</span>
+  </button>
+</div>
 <div class="meta">
 {meta_html}
 </div>
+<div class="table-wrap">
 <table>
 <thead><tr>
   <th class="num">#</th>
@@ -298,7 +450,28 @@ _HTML_TEMPLATE = """\
 {rows}
 </tbody>
 </table>
+</div>
 <footer>market-scout &bull; {run_at}</footer>
+<script>
+  (function() {{
+    var stored = localStorage.getItem('ms-theme');
+    if (stored) {{ document.documentElement.setAttribute('data-theme', stored); updateBtn(stored); }}
+  }})();
+  function toggleTheme() {{
+    var cur = document.documentElement.getAttribute('data-theme');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('ms-theme', next);
+    updateBtn(next);
+  }}
+  function updateBtn(theme) {{
+    var icon = document.getElementById('themeIcon');
+    var lbl  = document.getElementById('themeLbl');
+    if (!lbl) return;
+    if (theme === 'dark') {{ document.querySelector('.theme-icon').textContent = '☀️'; lbl.textContent = 'Light'; }}
+    else                  {{ document.querySelector('.theme-icon').textContent = '🌙'; lbl.textContent = 'Dark';  }}
+  }}
+</script>
 </body>
 </html>
 """
