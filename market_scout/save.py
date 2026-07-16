@@ -417,6 +417,45 @@ _HTML_TEMPLATE = """\
     font-size: 11.5px;
     text-align: right;
   }}
+  /* ── Filter bar ── */
+  .filters {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }}
+  .filter-label {{
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }}
+  .filter-select {{
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+  }}
+  .filter-select:hover {{ border-color: var(--border-strong); }}
+  .filter-reset {{
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }}
+  .filter-reset:hover {{ background: var(--surface2); color: var(--text); }}
+  .filter-count {{
+    font-size: 11.5px;
+    color: var(--text-subtle);
+    margin-left: 4px;
+  }}
 </style>
 </head>
 <body>
@@ -432,6 +471,22 @@ _HTML_TEMPLATE = """\
 <div class="meta">
 {meta_html}
 </div>
+<div class="filters">
+  <span class="filter-label">Filter:</span>
+  <select class="filter-select" id="f-ai" onchange="applyFilters()">
+    <option value="">AI: all</option>
+    <option value="YES">YES</option>
+    <option value="MAYBE">MAYBE</option>
+    <option value="NO">NO</option>
+    <option value="—">No score</option>
+  </select>
+  <select class="filter-select" id="f-country" onchange="applyFilters()">
+    <option value="">Country: all</option>
+    {country_options}
+  </select>
+  <button class="filter-reset" onclick="resetFilters()">Reset</button>
+  <span class="filter-count" id="f-count"></span>
+</div>
 <div class="table-wrap">
 <table>
 <thead><tr>
@@ -440,6 +495,7 @@ _HTML_TEMPLATE = """\
   <th>Title</th>
   <th>Price</th>
   <th>Location</th>
+  <th>Country</th>
   <th>Provider</th>
   <th>Seller</th>
   <th>Cond.</th>
@@ -465,12 +521,34 @@ _HTML_TEMPLATE = """\
     updateBtn(next);
   }}
   function updateBtn(theme) {{
-    var icon = document.getElementById('themeIcon');
-    var lbl  = document.getElementById('themeLbl');
+    var lbl = document.getElementById('themeLbl');
     if (!lbl) return;
     if (theme === 'dark') {{ document.querySelector('.theme-icon').textContent = '☀️'; lbl.textContent = 'Light'; }}
-    else                  {{ document.querySelector('.theme-icon').textContent = '🌙'; lbl.textContent = 'Dark';  }}
+    else                  {{ document.querySelector('.theme-icon').textContent = '🌙'; lbl.textContent = 'Dark'; }}
   }}
+  function applyFilters() {{
+    var ai = document.getElementById('f-ai').value;
+    var country = document.getElementById('f-country').value;
+    var rows = document.querySelectorAll('tbody tr');
+    var visible = 0;
+    rows.forEach(function(tr) {{
+      var rowAi = tr.getAttribute('data-ai') || '—';
+      var rowCountry = tr.getAttribute('data-country') || '';
+      var show = (!ai || rowAi === ai) && (!country || rowCountry === country);
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    }});
+    var total = rows.length;
+    var cnt = document.getElementById('f-count');
+    if (cnt) cnt.textContent = visible < total ? visible + ' / ' + total + ' shown' : total + ' rows';
+  }}
+  function resetFilters() {{
+    document.getElementById('f-ai').value = '';
+    document.getElementById('f-country').value = '';
+    applyFilters();
+  }}
+  // Init count
+  window.addEventListener('DOMContentLoaded', function() {{ applyFilters(); }});
 </script>
 </body>
 </html>
@@ -522,6 +600,7 @@ def save_html(listings: Sequence[Listing], meta: dict,
 
     op = original_prices or {}
     rows_html: list[str] = []
+    countries_seen: list[str] = []
     for i, lst in enumerate(listings, 1):
         # Price cell — show ≈ prefix if converted; tooltip shows original
         raw_price = f"{lst.currency}{lst.price}" if lst.currency else lst.price
@@ -538,10 +617,15 @@ def save_html(listings: Sequence[Listing], meta: dict,
             if lst.image_url else '<span class="no-img"></span>'
         )
 
+        # Country cell — ISO code + flag
+        country_code = lst.provider_country or ""
+        country_cell = f"{flag} {_esc(country_code)}" if country_code and country_code != "*" else (flag or "—")
+        if country_code and country_code not in countries_seen:
+            countries_seen.append(country_code)
+
         # Title cell: link with description tooltip when description exists
         title_text = _esc(lst.title or "—")
         if lst.description and lst.url:
-            # Truncate description for tooltip (browser/CSS attr() can handle long text)
             desc_preview = _esc_attr(lst.description[:600])
             title_cell = (
                 f'<span class="has-desc" data-desc="{desc_preview}">'
@@ -564,14 +648,18 @@ def save_html(listings: Sequence[Listing], meta: dict,
 
         # AI match cell — verdict as coloured text, full reason on hover
         ai_raw = lst.ai_match or ""
+        ai_data = "—"
         if ai_raw:
             upper = ai_raw.upper()
             if upper.startswith("YES"):
                 verdict, cls = "YES", "ai-yes"
+                ai_data = "YES"
             elif upper.startswith("NO"):
                 verdict, cls = "NO", "ai-no"
+                ai_data = "NO"
             else:
                 verdict, cls = "MAYBE", "ai-maybe"
+                ai_data = "MAYBE"
             reason = ai_raw.split(" — ", 1)[1] if " — " in ai_raw else ""
             if reason:
                 ai_cell = (
@@ -585,13 +673,14 @@ def save_html(listings: Sequence[Listing], meta: dict,
             ai_cell = '<span style="color:#bbb">—</span>'
 
         rows_html.append(
-            f"<tr>"
+            f'<tr data-ai="{ai_data}" data-country="{_esc_attr(country_code)}">'
             f'<td class="num">{i}</td>'
             f"<td>{img_cell}</td>"
             f'<td class="title">{title_cell}</td>'
             f'<td class="price">{price_cell}</td>'
             f"<td>{_esc(lst.location or '—')}</td>"
-            f'<td class="provider">{_esc(lst.provider)} {flag}</td>'
+            f"<td>{country_cell}</td>"
+            f'<td class="provider">{_esc(lst.provider)}</td>'
             f"<td>{_esc(lst.seller or '—')}</td>"
             f'<td class="cond">{_esc(lst.condition or "—")}</td>'
             f"<td>{_esc(lst.posted or '—')}</td>"
@@ -599,10 +688,18 @@ def save_html(listings: Sequence[Listing], meta: dict,
             f"</tr>"
         )
 
+    # Build country dropdown options from countries present in results
+    country_options = "\n    ".join(
+        f'<option value="{_esc(cc)}">{_flag(cc)} {_esc(cc)}</option>'
+        for cc in sorted(countries_seen)
+        if cc and cc != "*"
+    )
+
     html = _HTML_TEMPLATE.format(
         query=_esc(meta.get("query", "")),
         meta_html=meta_html,
         rows="\n".join(rows_html),
+        country_options=country_options,
         run_at=_esc(meta.get("run_at", "")),
     )
     path.write_text(html, encoding="utf-8")

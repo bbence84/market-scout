@@ -270,6 +270,10 @@ def search(
         False, "--dry-run",
         help="[Facebook only] Show the resolved city/radius plan without running any scraping.",
     ),
+    no_facebook: bool = typer.Option(
+        False, "--no-facebook",
+        help="Exclude Facebook Marketplace from the search, even when selected via a country code shorthand.",
+    ),
     debug: bool = typer.Option(
         False, "--debug",
         help="Print provider-level debug info: exact URLs fetched, redirect chain, response size, first result title.",
@@ -302,6 +306,10 @@ def search(
             provider_tokens = inferred_from_loc
 
     provider_names = resolve_providers(provider_tokens)
+
+    # Exclude Facebook if --no-facebook or config disable_facebook = true
+    if no_facebook or cfg.get("disable_facebook", False):
+        provider_names = [n for n in provider_names if n != "facebook"]
 
     # When country codes are passed as --provider and no explicit --location is set,
     # use those country codes as the Facebook location so FB searches that country
@@ -760,14 +768,21 @@ def init(
 
     if provider_name == "facebook":
         import asyncio
-        from market_scout.providers.worldwide.facebook.scraper import run_scrape
+        from market_scout.providers.worldwide.facebook.scraper import (
+            _make_context, init_stealth, accept_cookies, dismiss, dismiss_promotions
+        )
         from market_scout.providers.worldwide.facebook.config import FbScraperConfig
+        from playwright.async_api import async_playwright
+        import json
 
         cookie_path = cookies or Path("cookies.json")
         console.print(
             f"Opening Facebook Marketplace in a visible browser window.\n"
-            f"Log in and wait — the browser will close automatically once the\n"
-            f"session is established. Cookies will be saved to: [bold]{cookie_path}[/bold]\n"
+            f"  1. Log in if prompted\n"
+            f"  2. Dismiss any security alerts or 'new login' prompts\n"
+            f"  3. Make sure you can see Marketplace listings\n"
+            f"  4. Come back here and press [bold]Enter[/bold] to save cookies\n"
+            f"\nCookies will be saved to: [bold]{cookie_path}[/bold]\n"
         )
         cfg = FbScraperConfig(
             search_query="",
@@ -776,7 +791,45 @@ def init(
             headless=False,
             cookies_file=cookie_path,
         )
-        asyncio.run(run_scrape(cfg))
+
+        async def _open_and_wait():
+            async with async_playwright() as p:
+                ctx, fp = await _make_context(p, cfg)
+                page = await ctx.new_page()
+                await init_stealth(page, fp)
+                await page.goto(
+                    "https://www.facebook.com/marketplace/",
+                    wait_until="domcontentloaded",
+                    timeout=45000,
+                )
+                await asyncio.sleep(3)
+                await accept_cookies(page)
+                await asyncio.sleep(1)
+                await dismiss(page)
+                await dismiss_promotions(page)
+
+                # Wait for user confirmation in terminal
+                console.print(
+                    "[yellow]Browser is open. Log in, dismiss any alerts, then press Enter here.[/yellow]"
+                )
+                await asyncio.get_event_loop().run_in_executor(None, input)
+
+                # Save cookies
+                cks = await ctx.cookies()
+                cookie_path.write_text(
+                    json.dumps(
+                        [{"name": c["name"], "value": c["value"], "domain": c["domain"],
+                          "path": c["path"], "expires": c.get("expires", -1),
+                          "httpOnly": c.get("httpOnly", False), "secure": c.get("secure", False),
+                          "sameSite": c.get("sameSite", "None")}
+                         for c in cks],
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
+                await ctx.close()
+
+        asyncio.run(_open_and_wait())
         if cookie_path.exists():
             out.print(f"\n[green]✓[/green] Cookies saved to [bold]{cookie_path}[/bold]")
             out.print(

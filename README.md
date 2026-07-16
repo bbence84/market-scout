@@ -47,14 +47,20 @@ It's a command-line tool that searches the most popular classifieds sites across
 # Install
 cd market-scout
 python -m venv .venv
-.venv/Scripts/pip install -e .
-.venv/Scripts/playwright install chromium
+pip install -e .
+playwright install chromium
+
+# In case you want to use AI features (translation, AI listing analysis, etc...) set these
+market-scout config --set openrouter.api_key=sk-or-v1-XXXXXXXX
+market-scout config --set user_lang=hu
+market-scout config --set openrouter.model=anthropic/claude-haiku-4.5
 
 # One-time setup: initialise providers that need browser login
+# See later section for detail on which providers need initialization
 market-scout init facebook      # log in to Facebook in the browser
 market-scout init allegro_pl    # solve CAPTCHA once for Allegro Poland
 
-# Search
+# Basic search (without AI features)
 market-scout search --query "Commodore 64" --provider HU
 market-scout search --query "Commodore 64" --provider "HU,CZ,SK,AT,DE"
 ```
@@ -73,7 +79,7 @@ market-scout search --query "Commodore 64" --provider "HU,CZ,SK,AT" --max-result
 
 Searches Facebook Marketplace, Hardverapró, Jófogás, Vatera, Bazoš.cz, Bazoš.sk, Allegro.cz, Allegro.sk, Willhaben, and Shpock simultaneously. Results are sorted by provider with country flag emojis and clickable links.
 
-→ **[See example output — 112 results across 10 providers](examples/commodore64-europe.html)**
+→ **[See example output — 160 results across 10 providers, with AI assisted analysis](https://htmlpreview.github.io/?https://github.com/bbence84/market-scout/blob/main/examples/commodore64-ai-analysis.html)**
 
 ---
 
@@ -183,6 +189,7 @@ market-scout config --set openrouter.api_key=sk-or-v1-your-key
 market-scout config --set user_lang=en
 market-scout config --set max_results=30
 market-scout config --set cookies=~/.market-scout/cookies.json
+market-scout config --set disable_facebook=true   # exclude FB from all searches
 ```
 
 Config file: `user_config/config.toml` inside the repo directory (git-ignored) — plain TOML, edit in any text editor.
@@ -281,6 +288,7 @@ The `market-scout providers` command shows which providers are flagged as requir
 | `--no-translate` | Skip auto-translation for this run |
 | `--suggest-queries` | LLM suggests alternative search terms (interactive) |
 | `--save FORMAT` | Save to file: `json`, `csv`, `txt`, `html` (or `csv,html`) |
+| `--no-facebook` | Exclude Facebook Marketplace from this run |
 | `--cookies PATH` | [Facebook] Path to cookies JSON |
 | `--no-headless` | [Facebook/Allegro] Show browser window |
 | `--radius N` | [Facebook] Override search radius in km |

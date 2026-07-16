@@ -242,6 +242,24 @@ Project-level notes for AI coding assistants (Claude Code) are in [CLAUDE.md](CL
 
 ## Planned extensions
 
+### `monitor` command — continuous search with seen/dismissed tracking
+
+**Implementation plan:** [PLANNED_monitor.md](PLANNED_monitor.md)
+
+Adds a `monitor` command that loops on a schedule, shows only NEW listings each iteration, and lets users dismiss listings they're not interested in. State is persisted to `user_config/seen.db` (SQLite) so it survives across sessions.
+
+```bash
+market-scout monitor --query "Amiga 500" --provider HU --interval 30m
+```
+
+Key design decisions:
+- New `market_scout/monitor_db.py` — SQLite wrapper (`seen_listings` table, keyed by URL)
+- Refactor `search` internals into `_run_search_once()` helper shared by both commands
+- After each result table: prompt `"Mark as not interested (numbers, 'all', or Enter to skip):"`
+- Dismissed URLs are excluded globally (across all queries), not just the current one
+
+---
+
 ### Output folder, run IDs, and multi-search runs
 
 Currently results only exist for the duration of a single run. A persistent output layer would enable:

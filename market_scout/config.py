@@ -27,6 +27,7 @@ _DEFAULTS: dict[str, Any] = {
     "max_results": 30,
     "headless": True,
     "cookies": "",             # path to FB cookies file
+    "disable_facebook": False, # set to true to exclude FB from all searches
     "user_lang": "en",         # language for result translation
     "openrouter": {
         "api_key": "",
@@ -47,11 +48,16 @@ _DEFAULT_TOML = """\
 # Example: providers = ["hardverapro", "jofogas", "vatera", "bazos_cz", "bazos_sk"]
 providers = []
 
-# Default location for Facebook searches (country codes or city slugs).
+# Default location — country code(s) or city slugs, comma-separated.
+# Drives two things:
+#   1. Facebook: which cities to search (e.g. "HU" expands to Budapest + other HU cities)
+#   2. Provider selection: when no providers are set, a country code here also selects
+#      all matching providers (same as passing --provider HU on the CLI)
 # Example: location = "HU"
 location = ""
 
 # Default FB search radius in km (0 = use per-city DB defaults).
+# Only applies to Facebook city searches.
 radius = 0
 
 # Default max results per provider/city.
@@ -63,6 +69,10 @@ headless = true
 # Path to your Facebook cookies JSON file.
 # Example: cookies = "~/.market-scout/cookies.json"
 cookies = ""
+
+# Set to true to exclude Facebook Marketplace from all searches.
+# Equivalent to passing --no-facebook on every run.
+disable_facebook = false
 
 # Language for result translation.
 # Titles and conditions are automatically translated to this language after
