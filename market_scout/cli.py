@@ -151,7 +151,7 @@ def _approve_suggestions(original: str, suggestions: list[str]) -> list[str]:
     ),
 )
 def search(
-    query: str = typer.Option(..., "--query", "-q", help="Search term"),
+    query: str = typer.Option(..., "--query", "-q", help="Search term. Comma-separated for multiple terms: --query 'C64, Commodore 64, CBM 64' runs each separately and merges results."),
     provider: str = typer.Option(
         "", "--provider", "-p",
         help=(
@@ -374,7 +374,16 @@ def search(
         raise typer.Exit(code=1)
 
     # --- Build effective query list ---
-    queries: list[str] = [query]
+    # Comma-separated query → multiple search terms run in sequence and merged.
+    queries: list[str] = [q.strip() for q in query.split(",") if q.strip()]
+    if not queries:
+        queries = [query]
+    if len(queries) > 1:
+        console.print(
+            f"[cyan]Multiple search terms detected:[/cyan] "
+            + ", ".join(f"[bold]{q!r}[/bold]" for q in queries)
+        )
+        console.print(f"[dim]Each term will be searched separately; results are merged and deduplicated.[/dim]")
 
     if suggest_queries:
         console.print(f"[cyan]Asking LLM for alternative search terms...[/cyan]")
@@ -446,22 +455,30 @@ def search(
                     if location_tokens else "auto-detect"
                 )
                 loc_note = f"| locations: {loc_summary} | {len(pairs)} city search(es)"
+                if not location_tokens:
+                    loc_note += (
+                        "\n  [dim]Tip: pass [bold]--location HU[/bold] (or DE, AT, CZ, …) to search "
+                        "specific countries, or set [bold]location=HU[/bold] in config.[/dim]"
+                    )
             else:
                 prov_countries = getattr(prov, "countries", [])
                 has_geo = location_tokens and any(
                     t.upper() in prov_countries for t in location_tokens
                 )
-                # Warn only for multi-country providers (like Wallapop) where location
-                # determines which country's pool is searched. Single-country providers
-                # (like willhaben=AT) are nationwide by definition — no warning needed.
+                # Warn only for multi-country providers where location is required.
+                # Providers with no_location_ok=True handle the no-location case
+                # gracefully (e.g. Wallapop searches all countries).
                 is_multi_country = len(prov_countries) > 1 and "*" not in prov_countries
+                location_optional = getattr(prov, "no_location_ok", False)
                 if has_geo:
                     loc_note = f"[dim](geo-filtered: {', '.join(t for t in location_tokens if t.upper() in prov_countries)})[/dim]"
-                elif is_multi_country and not has_geo:
+                elif is_multi_country and not has_geo and not location_optional:
                     loc_note = (
                         f"[yellow]⚠ no location specified[/yellow] "
                         f"[dim]— pass --location {'/'.join(prov_countries[:3])} for results[/dim]"
                     )
+                elif is_multi_country and not has_geo and location_optional:
+                    loc_note = "[dim](all countries)[/dim]"
                 else:
                     loc_note = "[dim](location ignored — nationwide)[/dim]"
             console.print(

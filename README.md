@@ -43,29 +43,79 @@ It's a command-line tool that searches the most popular classifieds sites across
 
 ## Quick start
 
+### Install (recommended)
+
+[pipx](https://pipx.pypa.io) installs market-scout into an isolated environment and puts it on PATH — works on Windows, macOS, and Linux with no venv management.
+
+**1. Install pipx** (once per machine):
+
 ```bash
-# Install
-cd market-scout
-python -m venv .venv
-pip install -e .
+# macOS
+brew install pipx && pipx ensurepath
+
+# Windows (PowerShell)
+python -m pip install --user pipx
+python -m pipx ensurepath
+# Restart your terminal after this
+```
+
+**2. Install market-scout:**
+
+```bash
+# From a local clone
+pipx install /path/to/market-scout
+
+# Or directly from GitHub
+pipx install git+https://github.com/yourname/market-scout
+```
+
+**3. Install browser binaries** (one-time):
+
+```bash
 playwright install chromium
+```
 
-# In case you want to use AI features (translation, AI listing analysis, etc...) set these
+`market-scout` is now available in any terminal window, in any directory.
+
+```bash
+# Optional: set up AI features
 market-scout config --set openrouter.api_key=sk-or-v1-XXXXXXXX
-market-scout config --set user_lang=hu
-market-scout config --set openrouter.model=anthropic/claude-haiku-4.5
+market-scout config --set user_lang=en
 
-# One-time setup: initialise providers that need browser login
-# See later section for detail on which providers need initialization
+# One-time browser login for providers that need it
 market-scout init facebook      # log in to Facebook in the browser
 market-scout init allegro_pl    # solve CAPTCHA once for Allegro Poland
 
-# Basic search (without AI features)
+# Search
 market-scout search --query "Commodore 64" --provider HU
 market-scout search --query "Commodore 64" --provider "HU,CZ,SK,AT,DE"
 ```
 
-On Windows, prefix with `PYTHONIOENCODING=utf-8` if you see encoding errors.
+**Upgrading:** `pipx upgrade market-scout`
+
+**Config file location:** Run `market-scout config --show` to find the exact path after installing.
+
+### Developer install (to modify code or add a provider)
+
+If you want to hack on the code, add a provider, or run from source:
+
+```bash
+git clone https://github.com/yourname/market-scout
+cd market-scout
+python -m venv .venv
+
+# Windows
+.venv\Scripts\pip install -e .
+.venv\Scripts\playwright install chromium
+
+# macOS / Linux
+.venv/bin/pip install -e .
+.venv/bin/playwright install chromium
+```
+
+Changes to the source take effect immediately without reinstalling. See [adding-a-provider.md](adding-a-provider.md) for a guide to adding new scrapers.
+
+On Windows, prefix commands with `PYTHONIOENCODING=utf-8` if you see encoding errors.
 
 ---
 

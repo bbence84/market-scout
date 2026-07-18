@@ -128,6 +128,7 @@ def _parse_item(item: dict, country_filter: set[str] | None) -> Listing | None:
 class WallapopProvider:
     name = "wallapop"
     countries = ["ES", "IT", "PT", "GB"]
+    no_location_ok = True  # searches all countries when no location is given
 
     def search(self, req: SearchRequest) -> list[Listing]:
         """
@@ -151,8 +152,11 @@ class WallapopProvider:
             # One API call per country — anchor to centre coords, post-filter by country_code
             targets = [(cc, _COUNTRY_GEO[cc], {cc}) for cc in country_codes]
         else:
-            # Global search — no geo filter, no country post-filter
-            targets = [(None, (None, None), None)]
+            # No location given — search all supported countries explicitly.
+            # Without lat/lng the API anchors to the user's IP location which may
+            # have no Wallapop listings (e.g. Hungary). Looping all countries
+            # ensures results from ES/IT/PT/GB regardless of where the user is.
+            targets = [(cc, geo, {cc}) for cc, geo in _COUNTRY_GEO.items()]
 
         with httpx.Client(headers=_make_headers(), follow_redirects=True, timeout=20) as client:
             for target_cc, geo, country_filter in targets:
